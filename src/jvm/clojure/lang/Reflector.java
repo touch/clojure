@@ -407,7 +407,7 @@ static public List getMethods(Class c, int arity, String name, boolean getStatic
 }
 
 
-static Object boxArg(Class paramType, Object arg){
+public static Object boxArg(Class paramType, Object arg){
         if(!paramType.isPrimitive())
                 return paramType.cast(arg);
         else if(paramType == boolean.class)
@@ -434,7 +434,7 @@ static Object boxArg(Class paramType, Object arg){
                                            ", given: " + arg.getClass().getName());
 }
 
-static Object[] boxArgs(Class[] params, Object[] args){
+public static Object[] boxArgs(Class[] params, Object[] args){
         if(params.length == 0)
                 return null;
         Object[] ret = new Object[params.length];
@@ -480,7 +480,7 @@ static public boolean paramArgTypeMatch(Class paramType, Class argType){
         return false;
 }
 
-static boolean isCongruent(Class[] params, Object[] args){
+public static boolean isCongruent(Class[] params, Object[] args){
         boolean ret = false;
         if(args == null)
                 return params.length == 0;
