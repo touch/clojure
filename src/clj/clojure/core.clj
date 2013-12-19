@@ -5493,7 +5493,7 @@
   {:added "1.0"}
 
   [& args]
-  (apply load-libs :require args))
+  (locking #'*ns* (apply load-libs :require args)))
 
 (defn use
   "Like 'require, but also refers to each lib's namespace using
