@@ -694,8 +694,10 @@ public static class ImportExpr implements Expr{
 	}
 
 	public Object eval() {
-		Namespace ns = (Namespace) RT.CURRENT_NS.deref();
-		ns.importClass(RT.classForName(c));
+		synchronized (clojure.lang.RT.class) {
+			Namespace ns = (Namespace) RT.CURRENT_NS.deref();
+			ns.importClass(RT.classForName(c));
+		}
 		return null;
 	}
 
