@@ -5358,28 +5358,28 @@
   [prefix lib & options]
   (throw-if (and prefix (pos? (.indexOf (name lib) (int \.))))
             "lib names inside prefix lists must not contain periods")
-  (locking clojure.lang.RT
   (let [lib (if prefix (symbol (str prefix \. lib)) lib)
         opts (apply hash-map options)
         {:keys [as reload reload-all require use verbose]} opts
-        loaded (contains? @*loaded-libs* lib)
-        load (cond reload-all
-                   load-all
-                   (or reload (not require) (not loaded))
-                   load-one)
         need-ns (or as use)
-        filter-opts (select-keys opts '(:exclude :only :rename :refer))
-        undefined-on-entry (not (find-ns lib))]
+        filter-opts (select-keys opts '(:exclude :only :rename :refer))]
+    (locking (name lib) ; The symbol name is interned and guaranteed to be the same object everytime.
+      (let [loaded (contains? @*loaded-libs* lib)
+            load (cond reload-all
+                       load-all
+                       (or reload (not require) (not loaded))
+                       load-one)
+            undefined-on-entry (not (find-ns lib))]
+        (if load
+          (try
+            (load lib need-ns require)
+            (catch Exception e
+              (when undefined-on-entry
+                (remove-ns lib))
+              (throw e)))
+          (throw-if (and need-ns (not (find-ns lib)))
+                    "namespace '%s' not found" lib))))
     (binding [*loading-verbosely* (or *loading-verbosely* verbose)]
-      (if load
-        (try
-          (load lib need-ns require)
-          (catch Exception e
-            (when undefined-on-entry
-              (remove-ns lib))
-            (throw e)))
-        (throw-if (and need-ns (not (find-ns lib)))
-                  "namespace '%s' not found" lib))
       (when (and need-ns *loading-verbosely*)
         (printf "(clojure.core/in-ns '%s)\n" (ns-name *ns*)))
       (when as
@@ -5392,7 +5392,7 @@
           (doseq [opt filter-opts]
             (printf " %s '%s" (key opt) (print-str (val opt))))
           (printf ")\n"))
-        (apply refer lib (mapcat seq filter-opts)))))))
+        (apply refer lib (mapcat seq filter-opts))))))
 
 (defn- load-libs
   "Loads libs, interpreting libspecs, prefix lists, and flags for
