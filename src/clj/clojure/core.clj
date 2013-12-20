@@ -5358,6 +5358,7 @@
   [prefix lib & options]
   (throw-if (and prefix (pos? (.indexOf (name lib) (int \.))))
             "lib names inside prefix lists must not contain periods")
+  (locking clojure.lang.RT
   (let [lib (if prefix (symbol (str prefix \. lib)) lib)
         opts (apply hash-map options)
         {:keys [as reload reload-all require use verbose]} opts
@@ -5391,7 +5392,7 @@
           (doseq [opt filter-opts]
             (printf " %s '%s" (key opt) (print-str (val opt))))
           (printf ")\n"))
-        (apply refer lib (mapcat seq filter-opts))))))
+        (apply refer lib (mapcat seq filter-opts)))))))
 
 (defn- load-libs
   "Loads libs, interpreting libspecs, prefix lists, and flags for
@@ -5492,8 +5493,7 @@
   (require '(clojure zip [set :as s]))"
   {:added "1.0"}
 
-  [& args]
-  (locking #'*ns* (apply load-libs :require args)))
+  [& args] (apply load-libs :require args))
 
 (defn use
   "Like 'require, but also refers to each lib's namespace using
