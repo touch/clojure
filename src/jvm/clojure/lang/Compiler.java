@@ -220,30 +220,30 @@ static final public Var NO_RECUR = Var.create(null).setDynamic();
 static final public Var LOADER = Var.create().setDynamic();
 
 //String
-static final public Var SOURCE = Var.intern(Namespace.findOrCreate(Symbol.intern("clojure.core")),
+static final public Var SOURCE = Var.intern(RT.CLOJURE_NS,
                                             Symbol.intern("*source-path*"), "NO_SOURCE_FILE").setDynamic();
 
 //String
-static final public Var SOURCE_PATH = Var.intern(Namespace.findOrCreate(Symbol.intern("clojure.core")),
+static final public Var SOURCE_PATH = Var.intern(RT.CLOJURE_NS,
                                                  Symbol.intern("*file*"), "NO_SOURCE_PATH").setDynamic();
 
 //String
-static final public Var COMPILE_PATH = Var.intern(Namespace.findOrCreate(Symbol.intern("clojure.core")),
+static final public Var COMPILE_PATH = Var.intern(RT.CLOJURE_NS,
                                                   Symbol.intern("*compile-path*"), null).setDynamic();
 //boolean
-static final public Var COMPILE_FILES = Var.intern(Namespace.findOrCreate(Symbol.intern("clojure.core")),
+static final public Var COMPILE_FILES = Var.intern(RT.CLOJURE_NS,
                                                    Symbol.intern("*compile-files*"), Boolean.FALSE).setDynamic();
 
-static final public Var INSTANCE = Var.intern(Namespace.findOrCreate(Symbol.intern("clojure.core")),
+static final public Var INSTANCE = Var.intern(RT.CLOJURE_NS,
                                             Symbol.intern("instance?"));
 
-static final public Var ADD_ANNOTATIONS = Var.intern(Namespace.findOrCreate(Symbol.intern("clojure.core")),
+static final public Var ADD_ANNOTATIONS = Var.intern(RT.CLOJURE_NS,
                                             Symbol.intern("add-annotations"));
 
 static final public Keyword disableLocalsClearingKey = Keyword.intern("disable-locals-clearing");
 static final public Keyword elideMetaKey = Keyword.intern("elide-meta");
 
-static final public Var COMPILER_OPTIONS = Var.intern(Namespace.findOrCreate(Symbol.intern("clojure.core")),
+static final public Var COMPILER_OPTIONS = Var.intern(RT.CLOJURE_NS,
                                                       Symbol.intern("*compiler-options*"), null).setDynamic();
 
 static public Object getCompilerOption(Keyword k){

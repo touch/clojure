@@ -176,7 +176,7 @@ static Object readTrueFalseUnknown(String s){
 	return Keyword.intern(null, "unknown");
 }
 
-static public final Namespace CLOJURE_NS = Namespace.findOrCreate(Symbol.intern("clojure.core"));
+static public final Namespace CLOJURE_NS = Namespace.createCore();
 //static final Namespace USER_NS = Namespace.findOrCreate(Symbol.intern("user"));
 final static public Var OUT =
 		Var.intern(CLOJURE_NS, Symbol.intern("*out*"), new OutputStreamWriter(System.out)).setDynamic();
@@ -204,8 +204,7 @@ static Keyword DOC_KEY = Keyword.intern(null, "doc");
 final static public Var USE_CONTEXT_CLASSLOADER =
 		Var.intern(CLOJURE_NS, Symbol.intern("*use-context-classloader*"), T).setDynamic();
 //boolean
-static final public Var UNCHECKED_MATH = Var.intern(Namespace.findOrCreate(Symbol.intern("clojure.core")),
-                                                   Symbol.intern("*unchecked-math*"), Boolean.FALSE).setDynamic();
+static final public Var UNCHECKED_MATH = Var.intern(CLOJURE_NS, Symbol.intern("*unchecked-math*"), Boolean.FALSE).setDynamic();
 
 //final static public Var CURRENT_MODULE = Var.intern(Symbol.intern("clojure.core", "current-module"),
 //                                                    Module.findOrCreateModule("clojure/user"));
@@ -218,6 +217,7 @@ final static Var CMD_LINE_ARGS = Var.intern(CLOJURE_NS, Symbol.intern("*command-
 //symbol
 final public static Var CURRENT_NS = Var.intern(CLOJURE_NS, Symbol.intern("*ns*"),
                                                 CLOJURE_NS).setDynamic();
+final public static Var CURRENT_NS_ROOT = Var.intern(RT.CLOJURE_NS, Symbol.intern("*ns-root*"), Compiler.class.getClassLoader()).setDynamic();
 
 final static Var FLUSH_ON_NEWLINE = Var.intern(CLOJURE_NS, Symbol.intern("*flush-on-newline*"), T).setDynamic();
 final static Var PRINT_META = Var.intern(CLOJURE_NS, Symbol.intern("*print-meta*"), F).setDynamic();

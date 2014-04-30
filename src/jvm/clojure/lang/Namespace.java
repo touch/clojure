@@ -16,13 +16,23 @@ import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.WeakHashMap;
+import java.util.Map;
 
 public class Namespace extends AReference implements Serializable {
 final public Symbol name;
 transient final AtomicReference<IPersistentMap> mappings = new AtomicReference<IPersistentMap>();
 transient final AtomicReference<IPersistentMap> aliases = new AtomicReference<IPersistentMap>();
 
-final static ConcurrentHashMap<Symbol, Namespace> namespaces = new ConcurrentHashMap<Symbol, Namespace>();
+final public static WeakHashMap<ClassLoader, ConcurrentHashMap<Symbol, Namespace>> namespaces = new WeakHashMap<ClassLoader, ConcurrentHashMap<Symbol, Namespace>>();
+
+static Namespace createCore() {
+	Namespace core = new Namespace(Symbol.intern("clojure.core"));
+	ConcurrentHashMap<Symbol, Namespace> map = new ConcurrentHashMap<Symbol, Namespace>();
+	map.put(core.name, core);
+	namespaces.put(Compiler.class.getClassLoader(), map);
+	return core;
+}
 
 public String toString(){
 	return name.toString();
@@ -34,9 +44,50 @@ Namespace(Symbol name){
 	mappings.set(RT.DEFAULT_IMPORTS);
 	aliases.set(RT.map());
 }
+public static void injectFromRoot(String nameRegex){
+	ConcurrentHashMap<Symbol, Namespace> myNamespaces = namespaces.get((ClassLoader) RT.CURRENT_NS_ROOT.deref());
+	ConcurrentHashMap<Symbol, Namespace> root = namespaces.get(RT.CURRENT_NS_ROOT.root);
+
+	for (Map.Entry<Symbol, Namespace> ns : root.entrySet()) if (ns.getKey().name.matches(nameRegex)) {
+		myNamespaces.put(ns.getKey(), ns.getValue());
+	}
+}
+
+static ConcurrentHashMap<Symbol, Namespace> loaderLocalNamespaces(boolean create){
+	ClassLoader cl = (ClassLoader) RT.CURRENT_NS_ROOT.deref(); //Thread.currentThread().getContextClassLoader();
+	ConcurrentHashMap<Symbol, Namespace> myNamespaces = namespaces.get(cl);
+	if (myNamespaces == null) synchronized(namespaces) {
+		myNamespaces = namespaces.get(cl);
+		if (myNamespaces == null) {
+			myNamespaces = new ConcurrentHashMap<Symbol, Namespace>();
+			if (create) {
+				Symbol loadedLibs = Symbol.intern("*loaded-libs*");
+				Var loadedLibsVar = (Var) RT.CLOJURE_NS.getMappings().valAt(loadedLibs);
+				if (loadedLibsVar != null){
+					ConcurrentHashMap<Symbol, Namespace> root = namespaces.get(RT.CURRENT_NS_ROOT.root);
+					Symbol copy;
+					// Inject the namespaces created by 'core.clj' and friends:
+					copy = Symbol.intern("clojure.core.protocols"); myNamespaces.put(copy, root.get(copy));
+					copy = Symbol.intern("clojure.instant");        myNamespaces.put(copy, root.get(copy));
+					copy = Symbol.intern("clojure.uuid");           myNamespaces.put(copy, root.get(copy));
+					copy = Symbol.intern("clojure.string");         myNamespaces.put(copy, root.get(copy));
+					copy = Symbol.intern("clojure.java.io");        myNamespaces.put(copy, root.get(copy));
+				}
+				myNamespaces.put(RT.CLOJURE_NS.name, RT.CLOJURE_NS);
+				namespaces.put(cl, myNamespaces);
+				System.out.println("Created namespaces for Thread: " + Thread.currentThread() + ", loader: " + cl + ", namespaces: " + myNamespaces + ", clojure.core: " + RT.CLOJURE_NS);
+			}
+		}
+	}
+	return myNamespaces;
+}
+
+static ConcurrentHashMap<Symbol, Namespace> loaderLocalNamespaces(){
+	return loaderLocalNamespaces(false);
+}
 
 public static ISeq all(){
-	return RT.seq(namespaces.values());
+	return RT.seq(loaderLocalNamespaces().values());
 }
 
 public Symbol getName(){
@@ -170,22 +221,26 @@ public Var refer(Symbol sym, Var var){
 }
 
 public static Namespace findOrCreate(Symbol name){
-	Namespace ns = namespaces.get(name);
+	if (name.equals(RT.CLOJURE_NS.name)) return RT.CLOJURE_NS;
+
+	Namespace ns = loaderLocalNamespaces().get(name);
 	if(ns != null)
 		return ns;
 	Namespace newns = new Namespace(name);
-	ns = namespaces.putIfAbsent(name, newns);
+	ns = loaderLocalNamespaces(true).putIfAbsent(name, newns);
 	return ns == null ? newns : ns;
 }
 
 public static Namespace remove(Symbol name){
 	if(name.equals(RT.CLOJURE_NS.name))
 		throw new IllegalArgumentException("Cannot remove clojure namespace");
-	return namespaces.remove(name);
+	return loaderLocalNamespaces().remove(name);
 }
 
 public static Namespace find(Symbol name){
-	return namespaces.get(name);
+	if (name.equals(RT.CLOJURE_NS.name)) return RT.CLOJURE_NS;
+
+	return loaderLocalNamespaces().get(name);
 }
 
 public Object getMapping(Symbol name){
