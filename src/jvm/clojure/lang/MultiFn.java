@@ -104,6 +104,22 @@ public MultiFn preferMethod(Object dispatchValX, Object dispatchValY) {
                 }
 }
 
+public MultiFn setPreferTable(IPersistentMap table) {
+        rw.writeLock().lock();
+        try
+                {
+                preferTable = table;
+                resetCache();
+                return this;
+                }
+        finally
+                {
+                rw.writeLock().unlock();
+                }
+}
+
+
+
 private boolean prefers(Object x, Object y) {
         IPersistentSet xprefs = (IPersistentSet) getPreferTable().valAt(x);
         if(xprefs != null && xprefs.contains(y))
