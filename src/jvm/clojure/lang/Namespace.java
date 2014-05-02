@@ -44,13 +44,17 @@ Namespace(Symbol name){
 	mappings.set(RT.DEFAULT_IMPORTS);
 	aliases.set(RT.map());
 }
-public static void injectFromRoot(String nameRegex){
+public static IPersistentMap injectFromRoot(String nameRegex){
 	ConcurrentHashMap<Symbol, Namespace> myNamespaces = namespaces.get((ClassLoader) RT.CURRENT_NS_ROOT.deref());
 	ConcurrentHashMap<Symbol, Namespace> root = namespaces.get(RT.CURRENT_NS_ROOT.root);
 
+	IPersistentMap injected = RT.map();
 	for (Map.Entry<Symbol, Namespace> ns : root.entrySet()) if (ns.getKey().name.matches(nameRegex)) {
 		myNamespaces.put(ns.getKey(), ns.getValue());
+		injected = injected.assoc(ns.getKey(), ns.getValue());
 	}
+
+	return injected;
 }
 
 static ConcurrentHashMap<Symbol, Namespace> loaderLocalNamespaces(boolean create){
