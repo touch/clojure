@@ -217,7 +217,6 @@ final static Var CMD_LINE_ARGS = Var.intern(CLOJURE_NS, Symbol.intern("*command-
 //symbol
 final public static Var CURRENT_NS = Var.intern(CLOJURE_NS, Symbol.intern("*ns*"),
                                                 CLOJURE_NS).setDynamic();
-final public static Var CURRENT_NS_ROOT = Var.intern(RT.CLOJURE_NS, Symbol.intern("*ns-root*"), Compiler.class.getClassLoader()).setDynamic();
 
 final static Var FLUSH_ON_NEWLINE = Var.intern(CLOJURE_NS, Symbol.intern("*flush-on-newline*"), T).setDynamic();
 final static Var PRINT_META = Var.intern(CLOJURE_NS, Symbol.intern("*print-meta*"), F).setDynamic();

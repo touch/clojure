@@ -22,55 +22,53 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 
 public class DynamicClassLoader extends URLClassLoader{
-HashMap<Integer, Object[]> constantVals = new HashMap<Integer, Object[]>();
-static ConcurrentHashMap<String, Reference<Class>>classCache =
-        new ConcurrentHashMap<String, Reference<Class> >();
 
 static final URL[] EMPTY_URLS = new URL[]{};
 
-static final ReferenceQueue rq = new ReferenceQueue();
-
-public DynamicClassLoader(){
-    //pseudo test in lieu of hasContextClassLoader()
-        super(EMPTY_URLS,(Thread.currentThread().getContextClassLoader() == null ||
-                Thread.currentThread().getContextClassLoader() == ClassLoader.getSystemClassLoader())?
-                Compiler.class.getClassLoader():Thread.currentThread().getContextClassLoader());
+static {
+    registerAsParallelCapable();
 }
+
+
+protected final LoaderContext context;
 
 public DynamicClassLoader(ClassLoader parent){
-        super(EMPTY_URLS,parent);
+    this(EMPTY_URLS,parent);
 }
 
-  public DynamicClassLoader(URL[] urls, ClassLoader parent) {
+public DynamicClassLoader(URL[] urls, ClassLoader parent){
+    this(urls, parent, parent instanceof DynamicClassLoader? ((DynamicClassLoader) parent).context : LoaderContext.ROOT);
+}
+
+public DynamicClassLoader(final URL[] urls, final ClassLoader parent, final LoaderContext loaderContext){
     super(urls, parent);
-  }
+    this.context = loaderContext;
+}
+
+public void close() throws java.io.IOException{
+    this.context.namespaces.clear();
+    this.context.classCache.clear();
+    super.close();
+}
 
 public Class defineClass(String name, byte[] bytes, Object srcForm){
-        Util.clearCache(rq, classCache);
-        Class c = defineClass(name, bytes, 0, bytes.length);
-    classCache.put(name, new SoftReference(c,rq));
+    Util.clearCache(context.classCacheReferenceQueue, context.classCache);
+    Class c = defineClass(name, bytes, 0, bytes.length);
+    context.classCache.put(name, new SoftReference(c,context.classCacheReferenceQueue));
     return c;
 }
 
 protected Class<?> findClass(String name) throws ClassNotFoundException{
-    Reference<Class> cr = classCache.get(name);
+    Reference<Class> cr = context.classCache.get(name);
         if(cr != null)
                 {
                 Class c = cr.get();
         if(c != null)
             return c;
                 else
-                classCache.remove(name, cr);
+                context.classCache.remove(name, cr);
                 }
         return super.findClass(name);
-}
-
-public void registerConstants(int id, Object[] val){
-        constantVals.put(id, val);
-}
-
-public Object[] getConstants(int id){
-        return constantVals.get(id);
 }
 
 public void addURL(URL url){
