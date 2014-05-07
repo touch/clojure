@@ -1833,18 +1833,23 @@
     (fn 
       ([]
          (clojure.lang.Var/resetThreadBindingFrame frame)
+         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass ^Object f)))
          (f))
       ([x]
          (clojure.lang.Var/resetThreadBindingFrame frame)
+         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass ^Object f)))
          (f x))
       ([x y]
          (clojure.lang.Var/resetThreadBindingFrame frame)
+         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass ^Object f)))
          (f x y))
       ([x y z]
          (clojure.lang.Var/resetThreadBindingFrame frame)
+         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass ^Object f)))
          (f x y z))
       ([x y z & args] 
          (clojure.lang.Var/resetThreadBindingFrame frame)
+         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass ^Object f)))
          (apply f x y z args)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Refs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
