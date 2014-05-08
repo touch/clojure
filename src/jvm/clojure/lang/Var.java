@@ -44,12 +44,13 @@ static public class Unbound extends AFn{
 	}
 }
 
-static class Frame{
+static public class Frame{
+	static public Frame EMPTY = new Frame();
 	//Var->TBox
-	Associative bindings;
+	final Associative bindings;
 	//Var->val
 //	Associative frameBindings;
-	Frame prev;
+	final Frame prev;
 
 
 	public Frame(){
@@ -63,8 +64,7 @@ static class Frame{
 	}
 
     	protected Object clone() {
-		Frame f = new Frame();
-		f.bindings = this.bindings;
+		Frame f = this.prev == null? this : new Frame(this.bindings, null);
 		return f;
     	}
 
@@ -73,7 +73,7 @@ static class Frame{
 static final ThreadLocal<Frame> dvals = new ThreadLocal<Frame>(){
 
 	protected Frame initialValue(){
-		return new Frame();
+		return Frame.EMPTY;
 	}
 };
 
@@ -99,14 +99,14 @@ public static Object getThreadBindingFrame(){
 	Frame f = dvals.get();
 	if(f != null)
 		return f;
-	return new Frame();
+	return Frame.EMPTY;
 }
 
 public static Object cloneThreadBindingFrame(){
 	Frame f = dvals.get();
 	if(f != null)
 		return f.clone();
-	return new Frame();
+	return Frame.EMPTY;
 }
 
 public static void resetThreadBindingFrame(Object frame){
