@@ -1833,24 +1833,34 @@
     (fn 
       ([]
          (clojure.lang.Var/resetThreadBindingFrame frame)
-         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass ^Object f)))
-         (f))
+         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass f)))
+         (try (f)
+          (finally
+            (.setContextClassLoader (Thread/currentThread) nil))))
       ([x]
          (clojure.lang.Var/resetThreadBindingFrame frame)
-         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass ^Object f)))
-         (f x))
+         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass f)))
+         (try (f x)
+          (finally
+            (.setContextClassLoader (Thread/currentThread) nil))))
       ([x y]
          (clojure.lang.Var/resetThreadBindingFrame frame)
-         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass ^Object f)))
-         (f x y))
+         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass f)))
+         (try (f x y)
+          (finally
+            (.setContextClassLoader (Thread/currentThread) nil))))
       ([x y z]
          (clojure.lang.Var/resetThreadBindingFrame frame)
-         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass ^Object f)))
-         (f x y z))
+         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass f)))
+         (try (f x y z)
+          (finally
+            (.setContextClassLoader (Thread/currentThread) nil))))
       ([x y z & args] 
          (clojure.lang.Var/resetThreadBindingFrame frame)
-         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass ^Object f)))
-         (apply f x y z args)))))
+         (.setContextClassLoader (Thread/currentThread) (.getClassLoader (.getClass f)))
+         (try (apply f x y z args)
+          (finally
+            (.setContextClassLoader (Thread/currentThread) nil)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Refs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn ^{:private true}
