@@ -5378,7 +5378,6 @@
         {:keys [as reload reload-all require use verbose]} opts
         need-ns (or as use)
         filter-opts (select-keys opts '(:exclude :only :rename :refer))]
-    (locking (name lib) ; The symbol name is interned and guaranteed to be the same object everytime.
       (let [loaded (contains? @*loaded-libs* lib)
             load (cond reload-all
                        load-all
@@ -5393,7 +5392,7 @@
                 (remove-ns lib))
               (throw e)))
           (throw-if (and need-ns (not (find-ns lib)))
-                    "namespace '%s' not found" lib))))
+                    "namespace '%s' not found" lib)))
     (binding [*loading-verbosely* (or *loading-verbosely* verbose)]
       (when (and need-ns *loading-verbosely*)
         (printf "(clojure.core/in-ns '%s)\n" (ns-name *ns*)))
