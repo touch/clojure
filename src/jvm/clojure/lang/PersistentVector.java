@@ -233,7 +233,8 @@ public ISeq seq(){
 	return chunkedSeq();
 }
 
-public Iterator rangedIterator(final int start, final int end){
+@Override
+Iterator rangedIterator(final int start, final int end){
 	return new Iterator(){
 		int i = start;
 		int base = i - (i%32);
@@ -449,13 +450,13 @@ static final class TransientVector extends AFn implements ITransientVector, Coun
 		return cnt;
 	}
 	
-	public Node ensureEditable(Node node){
+	Node ensureEditable(Node node){
 		if(node.edit == root.edit)
 			return node;
 		return new Node(root.edit, node.array.clone());
 	}
 
-	public void ensureEditable(){
+	void ensureEditable(){
 		Thread owner = root.edit.get();
 		if(owner == Thread.currentThread())
 			return;
@@ -467,7 +468,7 @@ static final class TransientVector extends AFn implements ITransientVector, Coun
 //		tail = editableTail(tail);
 	}
 
-	public static Node editableRoot(Node node){
+	static Node editableRoot(Node node){
 		return new Node(new AtomicReference<Thread>(Thread.currentThread()), node.array.clone());
 	}
 
@@ -484,7 +485,7 @@ static final class TransientVector extends AFn implements ITransientVector, Coun
 		return new PersistentVector(cnt, shift, root, trimmedTail);
 	}
 
-	public static Object[] editableTail(Object[] tl){
+	static Object[] editableTail(Object[] tl){
 		Object[] ret = new Object[32];
 		System.arraycopy(tl,0,ret,0,tl.length);
 		return ret;

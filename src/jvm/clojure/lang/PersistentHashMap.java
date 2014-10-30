@@ -182,9 +182,13 @@ public Object kvreduce(IFn f, Object init){
 	if(RT.isReduced(init))
 		return ((IDeref)init).deref();
 	if(root != null){
-        return root.kvreduce(f,init);
-    }
-    return init;
+		init = root.kvreduce(f,init);
+		if(RT.isReduced(init))
+			return ((IDeref)init).deref();
+		else
+			return init;
+	}
+	return init;
 }
 
 public Object fold(long n, final IFn combinef, final IFn reducef,
@@ -405,7 +409,7 @@ final static class ArrayNode implements INode{
             if(node != null){
                 init = node.kvreduce(f,init);
 	            if(RT.isReduced(init))
-		            return ((IDeref)init).deref();
+		            return init;
 	            }
 	        }
         return init;
@@ -441,7 +445,7 @@ final static class ArrayNode implements INode{
 				}
 			catch(Exception e)
 				{
-				//aargh
+				throw Util.sneakyThrow(e);
 				}
 			}
 
@@ -836,10 +840,10 @@ final static class HashCollisionNode implements INode{
 					return this;
 				return new HashCollisionNode(null, hash, count, cloneAndSet(array, idx + 1, val));
 			}
-			Object[] newArray = new Object[array.length + 2];
-			System.arraycopy(array, 0, newArray, 0, array.length);
-			newArray[array.length] = key;
-			newArray[array.length + 1] = val;
+			Object[] newArray = new Object[2 * (count + 1)];
+			System.arraycopy(array, 0, newArray, 0, 2 * count);
+			newArray[2 * count] = key;
+			newArray[2 * count + 1] = val;
 			addedLeaf.val = addedLeaf;
 			return new HashCollisionNode(edit, hash, count + 1, newArray);
 		}
@@ -1086,21 +1090,21 @@ private static INode createNode(int shift, Object key1, Object val1, int key2has
 	int key1hash = hash(key1);
 	if(key1hash == key2hash)
 		return new HashCollisionNode(null, key1hash, 2, new Object[] {key1, val1, key2, val2});
-	Box _ = new Box(null);
+	Box addedLeaf = new Box(null);
 	AtomicReference<Thread> edit = new AtomicReference<Thread>();
 	return BitmapIndexedNode.EMPTY
-		.assoc(edit, shift, key1hash, key1, val1, _)
-		.assoc(edit, shift, key2hash, key2, val2, _);
+		.assoc(edit, shift, key1hash, key1, val1, addedLeaf)
+		.assoc(edit, shift, key2hash, key2, val2, addedLeaf);
 }
 
 private static INode createNode(AtomicReference<Thread> edit, int shift, Object key1, Object val1, int key2hash, Object key2, Object val2) {
 	int key1hash = hash(key1);
 	if(key1hash == key2hash)
 		return new HashCollisionNode(null, key1hash, 2, new Object[] {key1, val1, key2, val2});
-	Box _ = new Box(null);
+	Box addedLeaf = new Box(null);
 	return BitmapIndexedNode.EMPTY
-		.assoc(edit, shift, key1hash, key1, val1, _)
-		.assoc(edit, shift, key2hash, key2, val2, _);
+		.assoc(edit, shift, key1hash, key1, val1, addedLeaf)
+		.assoc(edit, shift, key2hash, key2, val2, addedLeaf);
 }
 
 private static int bitpos(int hash, int shift){
@@ -1132,7 +1136,7 @@ static final class NodeSeq extends ASeq {
                      init = node.kvreduce(f,init);
                  }
              if(RT.isReduced(init))
-	             return ((IDeref)init).deref();
+	             return init;
              }
         return init;
     }

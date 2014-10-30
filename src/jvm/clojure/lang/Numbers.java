@@ -389,6 +389,23 @@ static public long shiftRight(long x, long n){
 	return x >> n;
 }
 
+static public int unsignedShiftRightInt(int x, int n){
+	return x >>> n;
+}
+
+static public long unsignedShiftRight(Object x, Object y){
+    return unsignedShiftRight(bitOpsCast(x),bitOpsCast(y));
+}
+static public long unsignedShiftRight(Object x, long y){
+    return unsignedShiftRight(bitOpsCast(x),y);
+}
+static public long unsignedShiftRight(long x, Object y){
+    return unsignedShiftRight(x,bitOpsCast(y));
+}
+static public long unsignedShiftRight(long x, long n){
+	return x >>> n;
+}
+
 final static class LongOps implements Ops{
 	public Ops combine(Ops y){
 		return y.opsWith(this);
@@ -444,6 +461,8 @@ final static class LongOps implements Ops{
 
 	final public Number multiplyP(Number x, Number y){
 		long lx = x.longValue(), ly = y.longValue();
+    if (lx == Long.MIN_VALUE && ly < 0)
+      return BIGINT_OPS.multiply(x, y);
 		long ret = lx * ly;
 		if (ly != 0 && ret/ly != lx)
 			return BIGINT_OPS.multiply(x, y);
@@ -898,7 +917,7 @@ final static class BigDecimalOps extends OpsP{
 	}
 
 	public boolean equiv(Number x, Number y){
-		return toBigDecimal(x).equals(toBigDecimal(y));
+		return toBigDecimal(x).compareTo(toBigDecimal(y)) == 0;
 	}
 
 	public boolean lt(Number x, Number y){
@@ -967,10 +986,27 @@ static int hasheq(Number x){
 	if(xc == Long.class
 		|| xc == Integer.class
 		|| xc == Short.class
-		|| xc == Byte.class)
+		|| xc == Byte.class
+		|| (xc == BigInteger.class && lte(x, Long.MAX_VALUE) && gte(x,Long.MIN_VALUE)))
 		{
 		long lpart = x.longValue();
-		return (int) (lpart ^ (lpart >>> 32));
+		return Murmur3.hashLong(lpart);
+		//return (int) (lpart ^ (lpart >>> 32));
+		}
+	if(xc == BigDecimal.class)
+		{
+		// stripTrailingZeros() to make all numerically equal
+		// BigDecimal values come out the same before calling
+		// hashCode.  Special check for 0 because
+		// stripTrailingZeros() does not do anything to values
+		// equal to 0 with different scales.
+		if (isZero(x))
+			return BigDecimal.ZERO.hashCode();
+		else
+			{
+			BigDecimal tmp = ((BigDecimal) x).stripTrailingZeros();
+			return tmp.hashCode();
+			}
 		}
 	return x.hashCode();
 }
@@ -1144,7 +1180,7 @@ static public short[] short_array(int size, Object init){
 		{
 		ISeq s = RT.seq(init);
 		for(int i = 0; i < size && s != null; i++, s = s.next())
-			ret[i] = (Short) s.first();
+			ret[i] = ((Number) s.first()).shortValue();
 		}
 	return ret;
 }
@@ -1158,7 +1194,7 @@ static public short[] short_array(Object sizeOrSeq){
 		int size = RT.count(s);
 		short[] ret = new short[size];
 		for(int i = 0; i < size && s != null; i++, s = s.next())
-			ret[i] = (Short) s.first();
+			ret[i] = ((Number) s.first()).shortValue();
 		return ret;
 		}
 }
@@ -1206,7 +1242,7 @@ static public byte[] byte_array(int size, Object init){
 		{
 		ISeq s = RT.seq(init);
 		for(int i = 0; i < size && s != null; i++, s = s.next())
-			ret[i] = (Byte) s.first();
+			ret[i] = ((Number) s.first()).byteValue();
 		}
 	return ret;
 }
@@ -1220,7 +1256,7 @@ static public byte[] byte_array(Object sizeOrSeq){
 		int size = RT.count(s);
 		byte[] ret = new byte[size];
 		for(int i = 0; i < size && s != null; i++, s = s.next())
-			ret[i] = (Byte)s.first();
+			ret[i] = ((Number) s.first()).byteValue();
 		return ret;
 		}
 }
@@ -1747,6 +1783,8 @@ static public Number decP(long x){
 
 
 static public long multiply(long x, long y){
+  if (x == Long.MIN_VALUE && y < 0)
+		return throwIntOverflow();
 	long ret = x * y;
 	if (y != 0 && ret/y != x)
 		return throwIntOverflow();
@@ -1754,6 +1792,8 @@ static public long multiply(long x, long y){
 }
 
 static public Number multiplyP(long x, long y){
+  if (x == Long.MIN_VALUE && y < 0)
+		return multiplyP((Number)x,(Number)y);
 	long ret = x * y;
 	if (y != 0 && ret/y != x)
 		return multiplyP((Number)x,(Number)y);

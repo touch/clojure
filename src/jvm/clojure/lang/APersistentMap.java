@@ -114,20 +114,22 @@ static public int mapHash(IPersistentMap m){
 public int hasheq(){
 	if(_hasheq == -1)
 		{
-		this._hasheq = mapHasheq(this);
+		//this._hasheq = mapHasheq(this);
+		_hasheq = Murmur3.hashUnordered(this);
 		}
 	return _hasheq;
 }
 
 static public int mapHasheq(IPersistentMap m) {
-	int hash = 0;
-	for(ISeq s = m.seq(); s != null; s = s.next())
-		{
-		Map.Entry e = (Map.Entry) s.first();
-		hash += Util.hasheq(e.getKey()) ^
-				Util.hasheq(e.getValue());
-		}
-	return hash;
+	return Murmur3.hashUnordered(m);
+//	int hash = 0;
+//	for(ISeq s = m.seq(); s != null; s = s.next())
+//		{
+//		Map.Entry e = (Map.Entry) s.first();
+//		hash += Util.hasheq(e.getKey()) ^
+//				Util.hasheq(e.getValue());
+//		}
+//	return hash;
 }
 
 static public class KeySeq extends ASeq{

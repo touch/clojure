@@ -47,14 +47,7 @@ public void validate(Object val){
 }
 
 public void setValidator(IFn vf){
-        try
-                {
                 validate(vf, deref());
-                }
-        catch(Exception e)
-                {
-                throw Util.sneakyThrow(e);
-                }
         validator = vf;
 }
 
@@ -72,15 +65,7 @@ synchronized public IRef addWatch(Object key, IFn callback){
 }
 
 synchronized public IRef removeWatch(Object key){
-        try
-                {
                 watches = watches.without(key);
-                }
-        catch(Exception e)
-                {
-                throw Util.sneakyThrow(e);
-                }
-
         return this;
 }
 
@@ -92,16 +77,9 @@ public void notifyWatches(Object oldval, Object newval){
                         {
                         Map.Entry e = (Map.Entry) s.first();
                         IFn fn = (IFn) e.getValue();
-                        try
-                                {
                                 if(fn != null)
                                         fn.invoke(e.getKey(), this, oldval, newval);
                                 }
-                        catch(Exception e1)
-                                {
-                                throw Util.sneakyThrow(e1);
-                                }
-                        }
                 }
 }
 }

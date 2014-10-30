@@ -283,9 +283,7 @@
       (throw (AssertionError. (str "The names in " specials " cannot be used as field names for types or records."))))))
 
 (defmacro defrecord
-  "Alpha - subject to change
-  
-  (defrecord name [fields*]  options* specs*)
+  "(defrecord name [fields*]  options* specs*)
   
   Currently there are no options.
 
@@ -305,7 +303,7 @@
   are optional. The only methods that can be supplied are those
   declared in the protocols/interfaces.  Note that method bodies are
   not closures, the local environment includes only the named fields,
-  and those fields can be accessed directy.
+  and those fields can be accessed directly.
 
   Method definitions take the form:
 
@@ -371,7 +369,14 @@
          ([m#] (~(symbol (str classname "/create")) m#)))
        ~classname)))
 
-(defn- emit-deftype* 
+(defn record?
+  "Returns true if x is a record"
+  {:added "1.6"
+   :static true}
+  [x]
+  (instance? clojure.lang.IRecord x))
+
+(defn- emit-deftype*
   "Do not use this directly - use deftype"
   [tagname name fields interfaces methods]
   (let [classname (with-meta (symbol (str (namespace-munge *ns*) "." name)) (meta name))
@@ -381,9 +386,7 @@
        ~@methods)))
 
 (defmacro deftype
-  "Alpha - subject to change
-  
-  (deftype name [fields*]  options* specs*)
+  "(deftype name [fields*]  options* specs*)
   
   Currently there are no options.
 
@@ -554,7 +557,7 @@
                     (let [gargs (map #(gensym (str "gf__" % "__")) args)
                           target (first gargs)]
                       `([~@gargs]
-                          (. ~(with-meta target {:tag on-interface})  ~(or on-method method) ~@(rest gargs)))))
+                          (. ~(with-meta target {:tag on-interface}) (~(or on-method method) ~@(rest gargs))))))
                   arglists))
              ^clojure.lang.AFunction f#
              (fn ~gthis
@@ -606,7 +609,9 @@
                                     (recur (conj as (first rs)) (next rs))
                                     [(seq as) (first rs)]))]
                             (when (some #{0} (map count arglists))
-                              (throw (IllegalArgumentException. (str "Protocol fn: " mname " must take at least one arg"))))
+                              (throw (IllegalArgumentException. (str "Definition of function " mname " in protocol " name " must take at least one arg."))))
+                            (when (m (keyword mname))
+                              (throw (IllegalArgumentException. (str "Function " mname " in protocol " name " was redefined. Specify all arities in single definition."))))
                             (assoc m (keyword mname)
                                    (merge name-meta
                                           {:name (vary-meta mname assoc :doc doc :arglists arglists)

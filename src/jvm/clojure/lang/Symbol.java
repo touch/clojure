@@ -18,9 +18,9 @@ import java.io.ObjectStreamException;
 
 public class Symbol extends AFn implements IObj, Comparable, Named, Serializable, IHashEq{
 //these must be interned strings!
-public final String ns;
-public final String name;
-final int hash;
+final String ns;
+final String name;
+private int _hasheq;
 final IPersistentMap _meta;
 String _str;
 
@@ -57,7 +57,7 @@ static public Symbol intern(String ns, String name){
 }
 
 static public Symbol intern(String nsname){
-        int i = nsname.lastIndexOf('/');
+	int i = nsname.indexOf('/');
         if(i == -1 || nsname.equals("/"))
                 return new Symbol(null, nsname.intern());
         else
@@ -67,7 +67,6 @@ static public Symbol intern(String nsname){
 private Symbol(String ns_interned, String name_interned){
         this.name = name_interned;
         this.ns = ns_interned;
-        this.hash = Util.hashCombine(name.hashCode(), Util.hash(ns));
         this._meta = null;
 }
 
@@ -84,11 +83,14 @@ public boolean equals(Object o){
 }
 
 public int hashCode(){
-        return hash;
+	return Util.hashCombine(name.hashCode(), Util.hash(ns));
 }
 
 public int hasheq() {
-        return hash;
+	if(_hasheq == 0){
+		_hasheq = Util.hashCombine(Murmur3.hashUnencodedChars(name), Util.hash(ns));
+	}
+	return _hasheq;
 }
 
 public IObj withMeta(IPersistentMap meta){
@@ -99,7 +101,6 @@ private Symbol(IPersistentMap meta, String ns, String name){
         this.name = name;
         this.ns = ns;
         this._meta = meta;
-        this.hash = Util.hashCombine(name.hashCode(), Util.hash(ns));
 }
 
 public int compareTo(Object o){

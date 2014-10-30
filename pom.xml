@@ -5,7 +5,7 @@
   <artifactId>clojure</artifactId>
   <name>clojure</name>
   <packaging>jar</packaging>
-  <version>1.5.1</version>
+  <version>1.6.0</version>
 
   <url>http://clojure.org/</url>
   <description>Clojure core environment and runtime library.</description>
@@ -29,7 +29,7 @@
   <parent>
     <groupId>org.sonatype.oss</groupId>
     <artifactId>oss-parent</artifactId>
-    <version>5</version>
+    <version>7</version>
   </parent>
 
   <scm>
@@ -76,8 +76,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.3.2</version>
         <configuration>
-          <source>1.5</source>
-          <target>1.5</target>
+	  <source>1.6</source>
+	  <target>1.6</target>
           <encoding>${project.build.sourceEncoding}</encoding>
         </configuration>
       </plugin>
@@ -176,6 +176,11 @@
             <goals>
               <goal>jar</goal>
             </goals>
+            <configuration>
+              <excludes>
+                <exclude>clojure/version.properties</exclude>
+              </excludes>
+            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -227,6 +232,44 @@
                 </configuration>
               </execution>
             </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>sonatype-oss-release</id>
+      <!-- This profile is enabled automatically by the Sonatype
+           oss-parent POM when invoking the Maven Release Plugin -->
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-deploy-plugin</artifactId>
+            <version>2.7</version>
+            <configuration>
+              <skip>true</skip>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+            <version>1.4.4</version>
+            <executions>
+              <execution>
+                <id>default-deploy</id>
+                <phase>deploy</phase>
+                <!-- By default, this is the phase deploy goal will bind to -->
+                <goals>
+                  <goal>deploy</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <!-- The Base URL of Nexus instance where we want to stage -->
+              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+              <!-- The server "id" element from settings to use authentication from -->
+              <serverId>sonatype-nexus-staging</serverId>
+            </configuration>
           </plugin>
         </plugins>
       </build>
