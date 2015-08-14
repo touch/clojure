@@ -12,7 +12,7 @@
 
 (import '(clojure.lang Murmur3))
 
-;(set! *warn-on-reflection* true)
+(set! *warn-on-reflection* true)
 
 (deftype VecNode [edit arr])
 
@@ -49,9 +49,11 @@
   (reduce [_ f init]
     (loop [ret init i off]
       (if (< i end)
-        (recur (f ret (.aget am arr i)) (inc i))
-        ret)))
-  )
+        (let [ret (f ret (.aget am arr i))]
+          (if (reduced? ret)
+            ret
+            (recur ret (inc i))))
+        ret))))
 
 (deftype VecSeq [^clojure.core.ArrayManager am ^clojure.core.IVecImpl vec anode ^int i ^int offset] 
   :no-print true
@@ -60,15 +62,20 @@
   (internal-reduce
    [_ f val]
    (loop [result val
-          aidx offset]
+          aidx (+ i offset)]
      (if (< aidx (count vec))
        (let [node (.arrayFor vec aidx)
              result (loop [result result
                            node-idx (bit-and 0x1f aidx)]
                       (if (< node-idx (.alength am node))
-                        (recur (f result (.aget am node node-idx)) (inc node-idx))
+                        (let [result (f result (.aget am node node-idx))]
+                          (if (reduced? result)
+                            result
+                            (recur result (inc node-idx))))
                         result))]
-         (recur result (bit-and 0xffe0 (+ aidx 32))))
+         (if (reduced? result)
+           @result
+           (recur result (bit-and 0xffe0 (+ aidx 32)))))
        result)))
   
   clojure.lang.ISeq
@@ -500,5 +507,5 @@
    (loop [v  (vector-of t x1 x2 x3 x4)
           xn xn]
      (if xn
-       (recur (.cons v (first xn)) (next xn))
+       (recur (conj v (first xn)) (next xn))
        v))))

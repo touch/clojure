@@ -569,7 +569,7 @@
   the first argument, followed by the arguments to the constructor.
   It will be called every time an object of this class is created,
   immediately after all the inherited constructors have completed.
-  It's return value is ignored.
+  Its return value is ignored.
 
   :methods [ [name [param-types] return-type], ...]
 
@@ -717,10 +717,10 @@
   [& options]
     (let [options-map (apply hash-map options)
           [cname bytecode] (generate-interface options-map)]
-      (if *compile-files*
-        (clojure.lang.Compiler/writeClassFile cname bytecode)
-        (.defineClass ^DynamicClassLoader (deref clojure.lang.Compiler/LOADER) 
-                      (str (:name options-map)) bytecode options)))) 
+      (when *compile-files*
+        (clojure.lang.Compiler/writeClassFile cname bytecode))
+      (.defineClass ^DynamicClassLoader (deref clojure.lang.Compiler/LOADER)
+                    (str (:name options-map)) bytecode options)))
 
 (comment
 

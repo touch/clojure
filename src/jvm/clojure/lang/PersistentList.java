@@ -29,7 +29,7 @@ public static IFn creator = new RestFn(){
 			{
 			Object[] argsarray = ((ArraySeq) args).array;
 			IPersistentList ret = EMPTY;
-			for(int i = argsarray.length - 1; i >= 0; --i)
+			for(int i = argsarray.length - 1; i >= ((ArraySeq)args).i; --i)
 				ret = (IPersistentList) ret.cons(argsarray[i]);
 			return ret;
 			}
@@ -39,13 +39,6 @@ public static IFn creator = new RestFn(){
 		return create(list);
 	}
 
-	public IObj withMeta(IPersistentMap meta){
-		throw new UnsupportedOperationException();
-	}
-
-	public IPersistentMap meta(){
-		return null;
-	}
 };
 
 final public static EmptyList EMPTY = new EmptyList(null);
@@ -113,15 +106,20 @@ public PersistentList withMeta(IPersistentMap meta){
 
 public Object reduce(IFn f) {
 	Object ret = first();
-	for(ISeq s = next(); s != null; s = s.next())
-		ret = f.invoke(ret, s.first());
+	for(ISeq s = next(); s != null; s = s.next()) {
+        ret = f.invoke(ret, s.first());
+        if (RT.isReduced(ret)) return ((IDeref)ret).deref();;
+    }
 	return ret;
 }
 
 public Object reduce(IFn f, Object start) {
 	Object ret = f.invoke(start, first());
-	for(ISeq s = next(); s != null; s = s.next())
-		ret = f.invoke(ret, s.first());
+	for(ISeq s = next(); s != null; s = s.next()) {
+        if (RT.isReduced(ret)) return ((IDeref)ret).deref();
+        ret = f.invoke(ret, s.first());
+    }
+	if (RT.isReduced(ret)) return ((IDeref)ret).deref();
 	return ret;
 }
 

@@ -27,7 +27,7 @@ final public class LoaderContext
 		return cl instanceof DynamicClassLoader? ((DynamicClassLoader) cl).context : ROOT;
 	}
 
-
+	final public HashMap<Integer, Object[]> constantVals = new HashMap<Integer, Object[]>();
 	final public ConcurrentHashMap<Symbol, Namespace> namespaces = new ConcurrentHashMap<Symbol, Namespace>();
 
 	final public ConcurrentHashMap<String, Reference<Class>> classCache = new ConcurrentHashMap<String, Reference<Class>>();

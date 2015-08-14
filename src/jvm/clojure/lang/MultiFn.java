@@ -159,16 +159,12 @@ private boolean dominates(Object x, Object y) {
 }
 
  public IFn getMethod(Object dispatchVal) {
-        if(cachedHierarchy != hierarchy.deref())
-                resetCache();
-        IFn targetFn = (IFn) methodCache.get(dispatchVal);
-        if(targetFn != null)
-                return targetFn;
-         targetFn = findAndCacheBestMethod(dispatchVal);
-        if(targetFn != null)
-                return targetFn;
-        targetFn = (IFn) getMethodTable().valAt(defaultDispatchVal);
-        return targetFn;
+	if(cachedHierarchy != hierarchy.deref())
+		resetCache();
+	IFn targetFn = (IFn) methodCache.valAt(dispatchVal);
+	if(targetFn != null)
+		return targetFn;
+	return findAndCacheBestMethod(dispatchVal);
 }
 
 private IFn getFn(Object dispatchVal) {
@@ -180,60 +176,66 @@ private IFn getFn(Object dispatchVal) {
 }
 
 private IFn findAndCacheBestMethod(Object dispatchVal) {
-        rw.readLock().lock();
-        Map.Entry bestEntry;
-        IPersistentMap mt = methodTable;
-        IPersistentMap pt = preferTable;
-        Object ch = cachedHierarchy;
-        try
-                {
-                bestEntry = null;
-                for(Object o : getMethodTable())
-                        {
-                        Map.Entry e = (Map.Entry) o;
-                        if(isA(dispatchVal, e.getKey()))
-                                {
-                                if(bestEntry == null || dominates(e.getKey(), bestEntry.getKey()))
-                                        bestEntry = e;
-                                if(!dominates(bestEntry.getKey(), e.getKey()))
-                                        throw new IllegalArgumentException(
-                                                        String.format(
-                                                                        "Multiple methods in multimethod '%s' match dispatch value: %s -> %s and %s, and neither is preferred",
-                                                                        name, dispatchVal, e.getKey(), bestEntry.getKey()));
-                                }
-                        }
-                if(bestEntry == null)
-                        return null;
-                }
-        finally
-                {
-                rw.readLock().unlock();
-                }
+	rw.readLock().lock();
+	Object bestValue;
+	IPersistentMap mt = methodTable;
+	IPersistentMap pt = preferTable;
+	Object ch = cachedHierarchy;
+	try
+		{
+		Map.Entry bestEntry = null;
+		for(Object o : getMethodTable())
+			{
+			Map.Entry e = (Map.Entry) o;
+			if(isA(dispatchVal, e.getKey()))
+				{
+				if(bestEntry == null || dominates(e.getKey(), bestEntry.getKey()))
+					bestEntry = e;
+				if(!dominates(bestEntry.getKey(), e.getKey()))
+					throw new IllegalArgumentException(
+							String.format(
+									"Multiple methods in multimethod '%s' match dispatch value: %s -> %s and %s, and neither is preferred",
+									name, dispatchVal, e.getKey(), bestEntry.getKey()));
+				}
+			}
+		if(bestEntry == null)
+			{
+			bestValue = methodTable.valAt(defaultDispatchVal);
+		        if(bestValue == null)
+				return null;
+			}
+		else
+			bestValue = bestEntry.getValue();
+		}
+	finally
+		{
+		rw.readLock().unlock();
+		}
 
 
-        //ensure basis has stayed stable throughout, else redo
-        rw.writeLock().lock();
-        try
-                {
-                if( mt == methodTable &&
-                    pt == preferTable &&
-                    ch == cachedHierarchy &&
-                        cachedHierarchy == hierarchy.deref())
-                        {
-                        //place in cache
-                        methodCache.put(dispatchVal, bestEntry.getValue());
-                        return (IFn) bestEntry.getValue();
-                        }
-                else
-                        {
-                        resetCache();
-                        return findAndCacheBestMethod(dispatchVal);
-                        }
-                }
-        finally
-                {
-                rw.writeLock().unlock();
-                }
+	//ensure basis has stayed stable throughout, else redo
+	rw.writeLock().lock();
+	try
+		{
+		if( mt == methodTable &&
+		    pt == preferTable &&
+		    ch == cachedHierarchy &&
+			cachedHierarchy == hierarchy.deref())
+			{
+			//place in cache
+			methodCache = methodCache.assoc(dispatchVal, bestValue);
+			return (IFn) bestValue;
+			}
+		else
+			{
+			resetCache();
+			return findAndCacheBestMethod(dispatchVal);
+			}
+		}
+	finally
+		{
+		rw.writeLock().unlock();
+		}
 }
 
 public Object invoke() {

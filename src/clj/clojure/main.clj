@@ -53,6 +53,7 @@
   [^StackTraceElement el]
   (let [file (.getFileName el)
         clojure-fn? (and file (or (.endsWith file ".clj")
+                                  (.endsWith file ".cljc")
                                   (= file "NO_SOURCE_FILE")))]
     (str (if clojure-fn?
            (demunge (.getClassName el))
@@ -136,7 +137,7 @@
   [request-prompt request-exit]
   (or ({:line-start request-prompt :stream-end request-exit}
        (skip-whitespace *in*))
-      (let [input (read)]
+      (let [input (read {:read-cond :allow} *in*)]
         (skip-if-eol *in*)
         input)))
 
@@ -392,7 +393,7 @@ java -cp clojure.jar clojure.main -i init.clj script.clj args...")
   main options:
     -m, --main ns-name  Call the -main function from a namespace with args
     -r, --repl          Run a repl
-    path                Run a script from from a file or resource
+    path                Run a script from a file or resource
     -                   Run a script from standard input
     -h, -?, --help      Print this help message and exit
 
