@@ -176,7 +176,7 @@ static Object readTrueFalseUnknown(String s){
 	return Keyword.intern(null, "unknown");
 }
 
-static public final Namespace CLOJURE_NS = Namespace.findOrCreate(Symbol.intern("clojure.core"));
+static public final Namespace CLOJURE_NS = Namespace.createCore();
 //static final Namespace USER_NS = Namespace.findOrCreate(Symbol.intern("user"));
 final static public Var OUT =
 		Var.intern(CLOJURE_NS, Symbol.intern("*out*"), new OutputStreamWriter(System.out)).setDynamic();

@@ -161,7 +161,7 @@ private boolean dominates(Object x, Object y) {
  public IFn getMethod(Object dispatchVal) {
 	if(cachedHierarchy != hierarchy.deref())
 		resetCache();
-	IFn targetFn = (IFn) methodCache.valAt(dispatchVal);
+	IFn targetFn = (IFn) methodCache.get(dispatchVal);
 	if(targetFn != null)
 		return targetFn;
 	return findAndCacheBestMethod(dispatchVal);
@@ -223,7 +223,7 @@ private IFn findAndCacheBestMethod(Object dispatchVal) {
 			cachedHierarchy == hierarchy.deref())
 			{
 			//place in cache
-			methodCache = methodCache.assoc(dispatchVal, bestValue);
+			methodCache.put(dispatchVal, bestValue);
 			return (IFn) bestValue;
 			}
 		else
