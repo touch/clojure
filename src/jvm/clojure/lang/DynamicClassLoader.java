@@ -73,7 +73,16 @@ static Class<?> findInMemoryClass(LoaderContext context, String name) {
 
 static Class<?> findInMemoryClass(String name) {
     ClassLoader ccl = Thread.currentThread().getContextClassLoader();
-    LoaderContext lc = ccl instanceof DynamicClassLoader? ((DynamicClassLoader)ccl).context : LoaderContext.ROOT;
+    LoaderContext lc = null;
+    do {
+    	if (ccl instanceof DynamicClassLoader)
+    		lc = ((DynamicClassLoader)ccl).context;
+    	else {
+    		ccl = ccl.getParent();
+    		if (ccl == null)
+    			lc = LoaderContext.ROOT;
+    	}
+    } while (lc == null);
     return findInMemoryClass(lc, name);
 }
 
