@@ -1572,7 +1572,7 @@
     (if forms
       (let [form (first forms)
             threaded (if (seq? form)
-              (with-meta `(~(first form) ~x ~@(next form)) (meta form))
+                       (with-meta `(~(first form) ~x ~@(next form)) (meta form))
                        (list form x))]
         (recur threaded (next forms)))
       x)))
@@ -1582,7 +1582,7 @@
   last item in the first form, making a list of it if it is not a
   list already. If there are more forms, inserts the first form as the
   last item in second form, etc."
-  {:added "1.1"} 
+  {:added "1.1"}
   [x & forms]
   (loop [x x, forms forms]
     (if forms
@@ -2900,7 +2900,7 @@
    :static true}
   [f x] (clojure.lang.Iterate/create f x) )
 
-(defn range 
+(defn range
   "Returns a lazy seq of nums from start (inclusive) to end
   (exclusive), by step, where start defaults to 0, step to 1, and end to
   infinity. When step is equal to 0, returns an infinite sequence of
@@ -5712,24 +5712,24 @@
   (let [lib (if prefix (symbol (str prefix \. lib)) lib)
         opts (apply hash-map options)
         {:keys [as reload reload-all require use verbose]} opts
+        loaded (contains? @*loaded-libs* lib)
+        load (cond reload-all
+                   load-all
+                   (or reload (not require) (not loaded))
+                   load-one)
         need-ns (or as use)
-        filter-opts (select-keys opts '(:exclude :only :rename :refer))]
-      (let [loaded (contains? @*loaded-libs* lib)
-            load (cond reload-all
-                       load-all
-                       (or reload (not require) (not loaded))
-                       load-one)
-            undefined-on-entry (not (find-ns lib))]
-        (if load
-          (try
-            (load lib need-ns require)
-            (catch Exception e
-              (when undefined-on-entry
-                (remove-ns lib))
-              (throw e)))
-          (throw-if (and need-ns (not (find-ns lib)))
-                    "namespace '%s' not found" lib)))
+        filter-opts (select-keys opts '(:exclude :only :rename :refer))
+        undefined-on-entry (not (find-ns lib))]
     (binding [*loading-verbosely* (or *loading-verbosely* verbose)]
+      (if load
+        (try
+          (load lib need-ns require)
+          (catch Exception e
+            (when undefined-on-entry
+              (remove-ns lib))
+            (throw e)))
+        (throw-if (and need-ns (not (find-ns lib)))
+                  "namespace '%s' not found" lib))
       (when (and need-ns *loading-verbosely*)
         (printf "(clojure.core/in-ns '%s)\n" (ns-name *ns*)))
       (when as
@@ -5843,7 +5843,8 @@
   (require '(clojure zip [set :as s]))"
   {:added "1.0"}
 
-  [& args] (apply load-libs :require args))
+  [& args]
+  (apply load-libs :require args))
 
 (defn use
   "Like 'require, but also refers to each lib's namespace using
