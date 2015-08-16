@@ -88,7 +88,7 @@ protected Class<?>findClass(String name) throws ClassNotFoundException {
 protected synchronized Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
 	Class c = findLoadedClass(name);
 	if (c == null) {
-		c = findInMemoryClass(name);
+		c = findInMemoryClass(context, name);
 		if (c == null)
 			c = super.loadClass(name, false);
     }
