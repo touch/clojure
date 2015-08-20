@@ -58,7 +58,7 @@ public Class defineClass(String name, byte[] bytes, Object srcForm){
     return c;
 }
 
-static Class<?> findInMemoryClass(LoaderContext context, String name) {
+static public Class<?> findInMemoryClass(LoaderContext context, String name) {
     Reference<Class> cr = context.classCache.get(name);
 	if(cr != null)
 		{
@@ -71,7 +71,7 @@ static Class<?> findInMemoryClass(LoaderContext context, String name) {
 	return null;
 }
 
-static Class<?> findInMemoryClass(String name) {
+static public Class<?> findInMemoryClass(String name) {
     ClassLoader ccl = Thread.currentThread().getContextClassLoader();
     LoaderContext lc = null;
     do {
