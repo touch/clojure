@@ -33,6 +33,11 @@ final public class LoaderContext
 	final public ConcurrentHashMap<String, Reference<Class>> classCache = new ConcurrentHashMap<String, Reference<Class>>();
 	final public ReferenceQueue classCacheReferenceQueue = new ReferenceQueue();
 
+	public String toString() {
+		if (this == ROOT) return "(LoaderContext/ROOT with namespaces: "+ namespaces +")";
+		else return "("+ super.toString() +" with namespaces: "+ namespaces.keySet() +")";
+	}
+
 	public LoaderContext()
 	{
 		if (RT.CLOJURE_NS != null) {
