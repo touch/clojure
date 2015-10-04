@@ -346,7 +346,13 @@
                             (list meths)
                             meths)
                     meths (map (fn [[params & body]]
-                                   (cons (apply vector 'this params) body))
+                                   (cons (apply vector 'this params)
+                                         `(do
+                                            (let* [ct# (Thread/currentThread)
+                                                   cl# (.getContextClassLoader ct#)]
+                                              (.setContextClassLoader ct# (.getClassLoader ~(symbol pname)))
+                                              (try ~@body
+                                                (finally (.setContextClassLoader ct# cl#)))))))
                                meths)]
                 (if-not (contains? fmap (name sym))		  
                 (recur (assoc fmap (name sym) (cons `fn meths)) (next fs))
