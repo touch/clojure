@@ -15,7 +15,7 @@ package clojure.lang;
 import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
+import java.lang.ref.SoftReference;
 import java.util.concurrent.ConcurrentHashMap;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
@@ -38,7 +38,7 @@ public static Keyword intern(Symbol sym){
 		if(sym.meta() != null)
 			sym = (Symbol) sym.withMeta(null);
 		k = new Keyword(sym);
-		existingRef = table.putIfAbsent(sym, new WeakReference<Keyword>(k, rq));
+		existingRef = table.putIfAbsent(sym, new SoftReference<Keyword>(k, rq));
 		}
 	if(existingRef == null)
 		return k;
