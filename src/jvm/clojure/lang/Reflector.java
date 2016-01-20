@@ -310,11 +310,11 @@ public static Object invokeNoArgInstanceMember(Object target, String name, boole
 					+ " for " + target.getClass());
 	} else {
 		List meths = getMethods(c, 0, name, false);
-        if(meths.size() > 0)
-                return invokeMatchingMethod(name, meths, target, RT.EMPTY_ARRAY);
-        else
-                return getInstanceField(target, name);
-}
+		if(meths.size() > 0)
+			return invokeMatchingMethod(name, meths, target, RT.EMPTY_ARRAY);
+		else
+			return getInstanceField(target, name);
+	}
 }
 
 public static Object invokeInstanceMember(Object target, String name) {

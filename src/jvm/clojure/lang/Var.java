@@ -45,7 +45,7 @@ static public class Unbound extends AFn{
 }
 
 static public class Frame{
-	final static public Frame EMPTY = new Frame(PersistentHashMap.EMPTY, null);
+	final static public Frame TOP = new Frame(PersistentHashMap.EMPTY, null);
 	//Var->TBox
 	final Associative bindings;
 	//Var->val
@@ -68,7 +68,7 @@ static public class Frame{
 static final ThreadLocal<Frame> dvals = new ThreadLocal<Frame>(){
 
 	protected Frame initialValue(){
-		return Frame.EMPTY;
+		return Frame.TOP;
 	}
 };
 
@@ -91,17 +91,11 @@ public final Namespace ns;
 //IPersistentMap _meta;
 
 public static Object getThreadBindingFrame(){
-	Frame f = dvals.get();
-	if(f != null)
-		return f;
-	return Frame.EMPTY;
+	return dvals.get();
 }
 
 public static Object cloneThreadBindingFrame(){
-	Frame f = dvals.get();
-	if(f != null)
-		return f.clone();
-	return Frame.EMPTY;
+	return dvals.get().clone();
 }
 
 public static void resetThreadBindingFrame(Object frame){
@@ -243,8 +237,8 @@ public void setMeta(IPersistentMap m) {
 }
 
 public void setMacro() {
-        alterMeta(assoc, RT.list(macroKey, RT.T));
-        }
+    alterMeta(assoc, RT.list(macroKey, RT.T));
+}
 
 public boolean isMacro(){
 	return RT.booleanCast(meta().valAt(macroKey));
@@ -267,8 +261,8 @@ public Object getTag(){
 }
 
 public void setTag(Symbol tag) {
-        alterMeta(assoc, RT.list(RT.TAG_KEY, tag));
-        }
+    alterMeta(assoc, RT.list(RT.TAG_KEY, tag));
+}
 
 final public boolean hasRoot(){
 	return !(root instanceof Unbound);
@@ -335,8 +329,8 @@ public static void pushThreadBindings(Associative bindings){
 public static void popThreadBindings(){
     Frame f = dvals.get().prev;
     if (f == null) {
-		throw new IllegalStateException("Pop without matching push");
-    } else if (f == Frame.EMPTY) {
+        throw new IllegalStateException("Pop without matching push");
+    } else if (f == Frame.TOP) {
         dvals.remove();
     } else {
         dvals.set(f);
@@ -375,8 +369,8 @@ public Object call() {
 }
 
 public void run(){
-		invoke();
-		}
+        invoke();
+}
 
 public Object invoke() {
 	return fn().invoke();
@@ -716,7 +710,7 @@ static IFn assoc = new AFn(){
 static IFn dissoc = new AFn() {
     @Override
     public Object invoke(Object c, Object k)  {
-		    return RT.dissoc(c, k);
-		    }
+            return RT.dissoc(c, k);
+    }
 };
 }

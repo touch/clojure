@@ -47,8 +47,8 @@ public void validate(Object val){
 }
 
 public void setValidator(IFn vf){
-                validate(vf, deref());
-        validator = vf;
+	validate(vf, deref());
+	validator = vf;
 }
 
 public IFn getValidator(){
@@ -65,21 +65,21 @@ synchronized public IRef addWatch(Object key, IFn callback){
 }
 
 synchronized public IRef removeWatch(Object key){
-                watches = watches.without(key);
-        return this;
+	watches = watches.without(key);
+	return this;
 }
 
 public void notifyWatches(Object oldval, Object newval){
-        IPersistentMap ws = watches;
-        if(ws.count() > 0)
-                {
-                for(ISeq s = ws.seq(); s != null; s = s.next())
-                        {
-                        Map.Entry e = (Map.Entry) s.first();
-                        IFn fn = (IFn) e.getValue();
-                                if(fn != null)
-                                        fn.invoke(e.getKey(), this, oldval, newval);
-                                }
-                }
+	IPersistentMap ws = watches;
+	if(ws.count() > 0)
+		{
+		for(ISeq s = ws.seq(); s != null; s = s.next())
+			{
+			Map.Entry e = (Map.Entry) s.first();
+			IFn fn = (IFn) e.getValue();
+			if(fn != null)
+                                fn.invoke(e.getKey(), this, oldval, newval);
+			}
+		}
 }
 }

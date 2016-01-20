@@ -742,10 +742,8 @@ public static class ImportExpr implements Expr{
 	}
 
 	public Object eval() {
-		synchronized (clojure.lang.RT.class) {
-			Namespace ns = (Namespace) RT.CURRENT_NS.deref();
-			ns.importClass(RT.classForNameNonLoading(c));
-		}
+		Namespace ns = (Namespace) RT.CURRENT_NS.deref();
+		ns.importClass(RT.classForNameNonLoading(c));
 		return null;
 	}
 
@@ -1144,10 +1142,10 @@ static class InstanceFieldExpr extends FieldExpr implements AssignableExpr{
 			{
 			if(targetClass == null)
 				{
-			RT.errPrintWriter()
-		      .format("Reflection warning, %s:%d:%d - reference to field %s can't be resolved.\n",
-					  SOURCE_PATH.deref(), line, column, fieldName);
-			}
+				RT.errPrintWriter()
+					.format("Reflection warning, %s:%d:%d - reference to field %s can't be resolved.\n",
+									SOURCE_PATH.deref(), line, column, fieldName);
+				}
 			else
 				{
 				RT.errPrintWriter()
@@ -1327,12 +1325,12 @@ static class StaticFieldExpr extends FieldExpr implements AssignableExpr{
 }
 
 static Class maybePrimitiveType(Expr e){
-		if(e instanceof MaybePrimitiveExpr && e.hasJavaClass() && ((MaybePrimitiveExpr)e).canEmitPrimitive())
-			{
-			Class c = e.getJavaClass();
-			if(Util.isPrimitive(c))
-				return c;
-			}
+	if(e instanceof MaybePrimitiveExpr && e.hasJavaClass() && ((MaybePrimitiveExpr)e).canEmitPrimitive())
+		{
+		Class c = e.getJavaClass();
+		if(Util.isPrimitive(c))
+			return c;
+		}
 	return null;
 }
 
@@ -1499,12 +1497,12 @@ static class InstanceMethodExpr extends MethodExpr{
 			{
 			method = null;
 			if(RT.booleanCast(RT.WARN_ON_REFLECTION.deref()))
-			{
-			RT.errPrintWriter()
+				{
+				RT.errPrintWriter()
 					.format("Reflection warning, %s:%d:%d - call to method %s can't be resolved (target class is unknown).\n",
-					  SOURCE_PATH.deref(), line, column, methodName);
+						SOURCE_PATH.deref(), line, column, methodName);
+				}
 			}
-	}
 	}
 
 	public Object eval() {
@@ -1951,7 +1949,7 @@ static class ConstantExpr extends LiteralExpr{
 		else if (v instanceof APersistentVector)
 			return APersistentVector.class;
 		else
-		return v.getClass();
+			return v.getClass();
 		//throw new IllegalArgumentException("Has no Java class");
 	}
 
@@ -2695,23 +2693,23 @@ public static class IfExpr implements Expr, MaybePrimitiveExpr{
 
 		gen.visitLineNumber(line, gen.mark());
 
-			if(testExpr instanceof StaticMethodExpr && ((StaticMethodExpr)testExpr).canEmitIntrinsicPredicate())
-				{
-				((StaticMethodExpr) testExpr).emitIntrinsicPredicate(C.EXPRESSION, objx, gen, falseLabel);
-				}
-			else if(maybePrimitiveType(testExpr) == boolean.class)
-				{
-				((MaybePrimitiveExpr) testExpr).emitUnboxed(C.EXPRESSION, objx, gen);
-				gen.ifZCmp(gen.EQ, falseLabel);
-				}
-			else
-				{
-				testExpr.emit(C.EXPRESSION, objx, gen);
-				gen.dup();
-				gen.ifNull(nullLabel);
-				gen.getStatic(BOOLEAN_OBJECT_TYPE, "FALSE", BOOLEAN_OBJECT_TYPE);
-				gen.visitJumpInsn(IF_ACMPEQ, falseLabel);
-				}
+		if(testExpr instanceof StaticMethodExpr && ((StaticMethodExpr)testExpr).canEmitIntrinsicPredicate())
+			{
+			((StaticMethodExpr) testExpr).emitIntrinsicPredicate(C.EXPRESSION, objx, gen, falseLabel);
+			}
+		else if(maybePrimitiveType(testExpr) == boolean.class)
+			{
+			((MaybePrimitiveExpr) testExpr).emitUnboxed(C.EXPRESSION, objx, gen);
+			gen.ifZCmp(gen.EQ, falseLabel);
+			}
+		else
+			{
+			testExpr.emit(C.EXPRESSION, objx, gen);
+			gen.dup();
+			gen.ifNull(nullLabel);
+			gen.getStatic(BOOLEAN_OBJECT_TYPE, "FALSE", BOOLEAN_OBJECT_TYPE);
+			gen.visitJumpInsn(IF_ACMPEQ, falseLabel);
+			}
 		if(emitUnboxed)
 			((MaybePrimitiveExpr)thenExpr).emitUnboxed(context, objx, gen);
 		else
@@ -3449,16 +3447,16 @@ static class StaticInvokeExpr implements Expr, MaybePrimitiveExpr{
 			for(int i = 0; i < paramclasses.length - 1; i++)
 				{
 				Expr e = (Expr) args.nth(i);
-					if(maybePrimitiveType(e) == paramclasses[i])
-						{
-						((MaybePrimitiveExpr) e).emitUnboxed(C.EXPRESSION, objx, gen);
-						}
-					else
-						{
-						e.emit(C.EXPRESSION, objx, gen);
-						HostExpr.emitUnboxArg(objx, gen, paramclasses[i]);
-						}
+				if(maybePrimitiveType(e) == paramclasses[i])
+					{
+					((MaybePrimitiveExpr) e).emitUnboxed(C.EXPRESSION, objx, gen);
 					}
+				else
+					{
+					e.emit(C.EXPRESSION, objx, gen);
+					HostExpr.emitUnboxArg(objx, gen, paramclasses[i]);
+					}
+				}
 			IPersistentVector restArgs = RT.subvec(args,paramclasses.length - 1,args.count());
 			MethodExpr.emitArgsAsArray(restArgs,objx,gen);
 			gen.invokeStatic(Type.getType(ArraySeq.class), Method.getMethod("clojure.lang.ArraySeq create(Object[])"));
@@ -4827,13 +4825,13 @@ static public class ObjExpr implements Expr{
 
 	synchronized Class getCompiledClass(){
 		if(compiledClass == null)
-//				if(RT.booleanCast(COMPILE_FILES.deref()))
-//					compiledClass = RT.classForName(name);//loader.defineClass(name, bytecode);
-//				else
-					{
-					loader = (DynamicClassLoader) LOADER.deref();
-					compiledClass = loader.defineClass(name, bytecode, src);
-					}
+//			if(RT.booleanCast(COMPILE_FILES.deref()))
+//				compiledClass = RT.classForName(name);//loader.defineClass(name, bytecode);
+//			else
+				{
+				loader = (DynamicClassLoader) LOADER.deref();
+				compiledClass = loader.defineClass(name, bytecode, src);
+				}
 		return compiledClass;
 	}
 
@@ -6153,12 +6151,12 @@ public static class LetExpr implements Expr, MaybePrimitiveExpr{
 	                                       NO_RECUR, null));
 
 								}
-						LocalBinding lb = registerLocal(sym, tagOf(sym), init,false);
-						BindingInit bi = new BindingInit(lb, init);
-						bindingInits = bindingInits.cons(bi);
-						if(isLoop)
-							loopLocals = loopLocals.cons(lb);
-						}
+							LocalBinding lb = registerLocal(sym, tagOf(sym), init,false);
+							BindingInit bi = new BindingInit(lb, init);
+							bindingInits = bindingInits.cons(bi);
+							if(isLoop)
+								loopLocals = loopLocals.cons(lb);
+							}
 						finally
 							{
 							if(isLoop)
@@ -6172,10 +6170,10 @@ public static class LetExpr implements Expr, MaybePrimitiveExpr{
 					try {
 						if(isLoop)
 							{
-                                                        Var.pushThreadBindings(
+                            Var.pushThreadBindings(
 								RT.map(CLEAR_PATH, clearpath,
                                        CLEAR_ROOT, clearroot,
-                                                                       NO_RECUR, null));
+                                       NO_RECUR, null));
                                                        
 							}
 						bodyExpr = (new BodyExpr.Parser()).parse(isLoop ? C.RETURN : context, body);
@@ -6322,44 +6320,44 @@ public static class RecurExpr implements Expr, MaybePrimitiveExpr{
 			if(lb.getPrimitiveType() != null)
 				{
 				Class primc = lb.getPrimitiveType();
-					final Class pc = maybePrimitiveType(arg);
-					if(pc == primc)
-						((MaybePrimitiveExpr) arg).emitUnboxed(C.EXPRESSION, objx, gen);
-					else if(primc == long.class && pc == int.class)
-						{
-						((MaybePrimitiveExpr) arg).emitUnboxed(C.EXPRESSION, objx, gen);
-						gen.visitInsn(I2L);						
-						}
-					else if(primc == double.class && pc == float.class)
-						{
-						((MaybePrimitiveExpr) arg).emitUnboxed(C.EXPRESSION, objx, gen);
-						gen.visitInsn(F2D);						
-						}
-					else if(primc == int.class && pc == long.class)
-						{
-						((MaybePrimitiveExpr) arg).emitUnboxed(C.EXPRESSION, objx, gen);
-						gen.invokeStatic(RT_TYPE, Method.getMethod("int intCast(long)"));
-						}
-					else if(primc == float.class && pc == double.class)
-						{
-						((MaybePrimitiveExpr) arg).emitUnboxed(C.EXPRESSION, objx, gen);
-						gen.visitInsn(D2F);						
-						}
-					else
-						{
-//						if(true)//RT.booleanCast(RT.WARN_ON_REFLECTION.deref()))
-							throw new IllegalArgumentException
-//							RT.errPrintWriter().println
-								(//source + ":" + line +
-								 " recur arg for primitive local: " +
-						                                   lb.name + " is not matching primitive, had: " +
+				final Class pc = maybePrimitiveType(arg);
+				if(pc == primc)
+					((MaybePrimitiveExpr) arg).emitUnboxed(C.EXPRESSION, objx, gen);
+				else if(primc == long.class && pc == int.class)
+					{
+					((MaybePrimitiveExpr) arg).emitUnboxed(C.EXPRESSION, objx, gen);
+					gen.visitInsn(I2L);
+					}
+				else if(primc == double.class && pc == float.class)
+					{
+					((MaybePrimitiveExpr) arg).emitUnboxed(C.EXPRESSION, objx, gen);
+					gen.visitInsn(F2D);
+					}
+				else if(primc == int.class && pc == long.class)
+					{
+					((MaybePrimitiveExpr) arg).emitUnboxed(C.EXPRESSION, objx, gen);
+					gen.invokeStatic(RT_TYPE, Method.getMethod("int intCast(long)"));
+					}
+				else if(primc == float.class && pc == double.class)
+					{
+					((MaybePrimitiveExpr) arg).emitUnboxed(C.EXPRESSION, objx, gen);
+					gen.visitInsn(D2F);
+					}
+				else
+					{
+//					if(true)//RT.booleanCast(RT.WARN_ON_REFLECTION.deref()))
+						throw new IllegalArgumentException
+//						RT.errPrintWriter().println
+							(//source + ":" + line +
+							 " recur arg for primitive local: " +
+					                                   lb.name + " is not matching primitive, had: " +
 															(arg.hasJavaClass() ? arg.getJavaClass().getName():"Object") +
 															", needed: " +
 															primc.getName());
-//						arg.emit(C.EXPRESSION, objx, gen);
-//						HostExpr.emitUnboxArg(objx,gen,primc);
-						}
+//					arg.emit(C.EXPRESSION, objx, gen);
+//					HostExpr.emitUnboxArg(objx,gen,primc);
 					}
+				}
 			else
 				{
 				arg.emit(C.EXPRESSION, objx, gen);
@@ -6888,12 +6886,12 @@ static PathNode commonPath(PathNode n1, PathNode n2){
 static void addAnnotation(Object visitor, IPersistentMap meta){
 	if(meta != null && ADD_ANNOTATIONS.isBound())
 		 ADD_ANNOTATIONS.invoke(visitor, meta);
-	}
+}
 
 static void addParameterAnnotation(Object visitor, IPersistentMap meta, int i){
 	if(meta != null && ADD_ANNOTATIONS.isBound())
 		 ADD_ANNOTATIONS.invoke(visitor, meta, i);
-	}
+}
 
 private static Expr analyzeSymbol(Symbol sym) {
 	Symbol tag = tagOf(sym);
