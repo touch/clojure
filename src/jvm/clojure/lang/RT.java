@@ -27,6 +27,7 @@ import java.security.PrivilegedAction;
 import java.net.URL;
 import java.net.JarURLConnection;
 import java.nio.charset.Charset;
+import java.net.URLConnection;
 
 public class RT{
 
@@ -384,11 +385,17 @@ static public void init() {
 }
 
 static public long lastModified(URL url, String libfile) throws IOException{
-	if(url.getProtocol().equals("jar")) {
-		return ((JarURLConnection) url.openConnection()).getJarFile().getEntry(libfile).getTime();
+	URLConnection connection = url.openConnection();
+	try {
+		if (url.getProtocol().equals("jar"))
+			return ((JarURLConnection) connection).getJarFile().getEntry(libfile).getTime();
+		else
+			return connection.getLastModified();
 	}
-	else {
-		return url.openConnection().getLastModified();
+	finally {
+		InputStream ins = connection.getInputStream();
+		if (ins != null)
+			ins.close();
 	}
 }
 
@@ -466,6 +473,13 @@ static void doInit() throws ClassNotFoundException, IOException{
 		in_ns.invoke(USER);
 		refer.invoke(CLOJURE);
 		maybeLoadResourceScript("user.clj");
+
+		// start socket servers
+		Var require = var("clojure.core", "require");
+		Symbol SERVER = Symbol.intern("clojure.core.server");
+		require.invoke(SERVER);
+		Var start_servers = var("clojure.core.server", "start-servers");
+		start_servers.invoke(System.getProperties());
 	}
 	finally {
 		Var.popThreadBindings();
@@ -808,7 +822,7 @@ static public Object find(Object coll, Object key){
 	else {
 		Map m = (Map) coll;
 		if(m.containsKey(key))
-			return new MapEntry(key, m.get(key));
+			return MapEntry.create(key, m.get(key));
 		return null;
 	}
 }
@@ -1688,7 +1702,7 @@ static public Object[] seqToArray(ISeq seq){
     }
 
 static public Object seqToTypedArray(ISeq seq) {
-	Class type = (seq != null) ? seq.first().getClass() : Object.class;
+	Class type = (seq != null && seq.first() != null) ? seq.first().getClass() : Object.class;
 	return seqToTypedArray(type, seq);
 }
 

@@ -704,6 +704,16 @@
          ai3 ao3
          ai4 ao4)))
 
+(deftest test-map-entry?
+  (testing "map-entry? = false"
+    (are [entry]
+      (false? (map-entry? entry))
+      nil 5 #{1 2} '(1 2) {:a 1} [] [0] [1 2 3]))
+  (testing "map-entry? = true"
+    (are [entry]
+      (true? (map-entry? entry))
+      (first (doto (java.util.HashMap.) (.put "x" 1))))))
+
 ;; *** Sets ***
 
 (deftest test-hash-set
@@ -1062,6 +1072,9 @@
       {x1 v4a, w5a v4c, v4a z3b, y2 2} [x1 v4a, w5a v4a, w5b v4b,
                                         v4a z3a, y2 2, v4b z3b, w5c v4c])))
 
+(deftest test-array-map-arity
+  (is (thrown? IllegalArgumentException
+               (array-map 1 2 3))))
 
 (deftest test-assoc
   (are [x y] (= x y)

@@ -120,6 +120,12 @@
 
 ; set!
 
+(defprotocol p (f [_]))
+(deftype t [^:unsynchronized-mutable x] p (f [_] (set! (.x _) 1)))
+
+(deftest test-set!
+  (is (= 1 (f (t. 1)))))
+
 ; memfn
 
 
@@ -199,6 +205,11 @@
     (is (thrown? IllegalArgumentException (.flip d -1)))
     ;; same behavior on second call
     (is (thrown? IllegalArgumentException (.flip d -1)))))
+
+;; http://dev.clojure.org/jira/browse/CLJ-1657
+(deftest test-proxy-abstract-super
+  (let [p (proxy [java.io.Writer] [])]
+    (is (thrown? UnsupportedOperationException (.close p)))))
 
 ; Arrays: [alength] aget aset [make-array to-array into-array to-array-2d aclone]
 ;   [float-array, int-array, etc]
@@ -353,6 +364,8 @@
         (class (first a)) (class (first v)) ))
 
   (is (= \a (aget (into-array Character/TYPE [\a \b \c]) 0)))
+
+  (is (= [nil 1 2] (seq (into-array [nil 1 2]))))
   
   (let [types [Integer/TYPE
                Byte/TYPE

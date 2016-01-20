@@ -140,6 +140,17 @@
   (should-not-reflect #(.floatValue (clojure.test-clojure.compilation/hinted "arg")))
   (should-not-reflect #(.size (clojure.test-clojure.compilation/hinted :many :rest :args :here))))
 
+(deftest CLJ-1232-qualify-hints
+  (let [arglists (-> #'clojure.test-clojure.compilation/hinted meta :arglists)]
+    (is (= 'java.lang.String (-> arglists first meta :tag)))
+    (is (= 'java.lang.Integer (-> arglists second meta :tag)))))
+
+(deftest CLJ-1232-return-type-not-imported
+  (is (thrown-with-msg? Compiler$CompilerException #"Unable to resolve classname: Closeable"
+                        (eval '(defn a ^Closeable []))))
+  (is (thrown-with-msg? Compiler$CompilerException #"Unable to resolve classname: Closeable"
+                        (eval '(defn a (^Closeable []))))))
+
 (defn ^String hinting-conflict ^Integer [])
 
 (deftest calls-use-arg-vector-hint
@@ -251,6 +262,13 @@
     (is (try (load-string "(.submit (java.util.concurrent.Executors/newCachedThreadPool) ^Runnable #())")
              (catch Compiler$CompilerException e nil)))))
 
+(defn ^{:tag 'long} hinted-primfn [^long x] x)
+(defn unhinted-primfn [^long x] x)
+(deftest CLJ-1533-primitive-functions-lose-tag
+  (should-not-reflect #(Math/abs (clojure.test-clojure.compilation/hinted-primfn 1)))
+  (should-not-reflect #(Math/abs ^long (clojure.test-clojure.compilation/unhinted-primfn 1))))
+
+
 (defrecord Y [a])
 #clojure.test_clojure.compilation.Y[1]
 (defrecord Y [b])
@@ -297,6 +315,13 @@
          (class (clojure.test_clojure.compilation.examples.T.))
          (class (clojure.test-clojure.compilation.examples/->T)))))
 
+(deftest clj-1208
+  ;; clojure.test-clojure.compilation.load-ns has not been loaded
+  ;; so this would fail if the deftype didn't load it in its static
+  ;; initializer as the implementation of f requires a var from
+  ;; that namespace
+  (is (= 1 (.f (clojure.test_clojure.compilation.load_ns.x.)))))
+
 (deftest clj-1568
   (let [compiler-fails-at?
           (fn [row col source]
@@ -322,3 +347,51 @@
 
 
                    (/ 1 0)"))))
+
+(deftype CLJ1399 [munged-field-name])
+
+(deftest clj-1399
+  ;; throws an exception on failure
+  (is (eval `(fn [] ~(CLJ1399. 1)))))
+
+(deftest CLJ-1586-lazyseq-literals-preserve-metadata
+  (should-not-reflect (eval (list '.substring (with-meta (concat '(identity) '("foo")) {:tag 'String}) 0))))
+
+(deftest CLJ-1456-compiler-error-on-incorrect-number-of-parameters-to-throw
+  (is (thrown? RuntimeException (eval '(defn foo [] (throw)))))
+  (is (thrown? RuntimeException (eval '(defn foo [] (throw RuntimeException any-symbol)))))
+  (is (thrown? RuntimeException (eval '(defn foo [] (throw (RuntimeException.) any-symbol)))))
+  (is (var? (eval '(defn foo [] (throw (IllegalArgumentException.)))))))
+
+(deftest clj-1809
+  (is (eval `(fn [y#]
+               (try
+                 (finally
+                   (let [z# y#])))))))
+
+;; See CLJ-1846
+(deftest incorrect-primitive-type-hint-throws
+  ;; invalid primitive type hint
+  (is (thrown-with-msg? Compiler$CompilerException #"Cannot coerce long to int"
+        (load-string "(defn returns-long ^long [] 1) (Integer/bitCount ^int (returns-long))")))
+  ;; correct casting instead
+  (is (= 1 (load-string "(defn returns-long ^long [] 1) (Integer/bitCount (int (returns-long)))"))))
+
+;; See CLJ-1825
+(def zf (fn rf [x] (lazy-seq (cons x (rf x)))))
+(deftest test-anon-recursive-fn
+  (is (= [0 0] (take 2 ((fn rf [x] (lazy-seq (cons x (rf x)))) 0))))
+  (is (= [0 0] (take 2 (zf 0)))))
+
+
+;; See CLJ-1845
+(deftest direct-linking-for-load
+  (let [called? (atom nil)
+        logger (fn [& args]
+                 (reset! called? true)
+                 nil)]
+    (with-redefs [load logger]
+      ;; doesn't actually load clojure.repl, but should
+      ;; eventually call `load` and reset called?.
+      (require 'clojure.repl :reload))
+    (is @called?)))

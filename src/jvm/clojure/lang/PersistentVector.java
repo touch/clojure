@@ -16,9 +16,10 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PersistentVector extends APersistentVector implements IObj, IEditableCollection, IReduce{
+public class PersistentVector extends APersistentVector implements IObj, IEditableCollection, IReduce, IKVReduce{
 
 public static class Node implements Serializable {
 	transient public final AtomicReference<Thread> edit;
@@ -55,6 +56,10 @@ private static final IFn TRANSIENT_VECTOR_CONJ = new AFn() {
         return coll;
     }
 };
+
+static public PersistentVector adopt(Object [] items){
+	return new PersistentVector(items.length, 5, EMPTY_NODE, items);
+}
 
 static public PersistentVector create(IReduceInit items) {
     TransientVector ret = EMPTY.asTransient();
@@ -211,7 +216,6 @@ public IPersistentMap meta(){
 
 
 public PersistentVector cons(Object val){
-	int i = cnt;
 	//room in tail?
 //	if(tail.length < 32)
 	if(cnt - tailoff() < 32)
@@ -291,12 +295,16 @@ Iterator rangedIterator(final int start, final int end){
 			}
 
 		public Object next(){
-			if(i-base == 32){
-				array = arrayFor(i);
-				base += 32;
+			if(i < end) {
+				if(i-base == 32){
+					array = arrayFor(i);
+					base += 32;
 				}
-			return array[i++ & 0x01f];
+				return array[i++ & 0x01f];
+			} else {
+				throw new NoSuchElementException();
 			}
+		}
 
 		public void remove(){
 			throw new UnsupportedOperationException();

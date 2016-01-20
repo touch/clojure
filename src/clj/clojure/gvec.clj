@@ -267,7 +267,7 @@
          (< (int k) cnt)))
   (entryAt [this k]
     (if (.containsKey this k)
-      (clojure.lang.MapEntry. k (.nth this (int k)))
+      (clojure.lang.MapEntry/create k (.nth this (int k)))
       nil))
 
   clojure.lang.ILookup
@@ -385,7 +385,10 @@
     (let [i (java.util.concurrent.atomic.AtomicInteger. 0)]
       (reify java.util.Iterator
         (hasNext [_] (< (.get i) cnt))
-        (next [_] (.nth this (dec (.incrementAndGet i))))
+        (next [_] (try
+                    (.nth this (dec (.incrementAndGet i)))
+                    (catch IndexOutOfBoundsException _
+                      (throw (java.util.NoSuchElementException.)))))
         (remove [_] (throw (UnsupportedOperationException.))))))
 
   java.util.Collection
@@ -428,9 +431,15 @@
       (reify java.util.ListIterator
         (hasNext [_] (< (.get i) cnt))
         (hasPrevious [_] (pos? i))
-        (next [_] (.nth this (dec (.incrementAndGet i))))
+        (next [_] (try
+                    (.nth this (dec (.incrementAndGet i)))
+                    (catch IndexOutOfBoundsException _
+                      (throw (java.util.NoSuchElementException.)))))
         (nextIndex [_] (.get i))
-        (previous [_] (.nth this (.decrementAndGet i)))
+        (previous [_] (try
+                        (.nth this (.decrementAndGet i))
+                        (catch IndexOutOfBoundsException _
+                          (throw (java.util.NoSuchElementException.)))))
         (previousIndex [_] (dec (.get i)))
         (add [_ e] (throw (UnsupportedOperationException.)))
         (remove [_] (throw (UnsupportedOperationException.)))

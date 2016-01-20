@@ -82,11 +82,11 @@
  conj (fn ^:static conj
         ([] [])
         ([coll] coll)
-        ([coll x] (. clojure.lang.RT (conj coll x)))
+        ([coll x] (clojure.lang.RT/conj coll x))
         ([coll x & xs]
          (if xs
-           (recur (conj coll x) (first xs) (next xs))
-           (conj coll x)))))
+           (recur (clojure.lang.RT/conj coll x) (first xs) (next xs))
+           (clojure.lang.RT/conj coll x)))))
 
 (def
  ^{:doc "Same as (first (next x))"
@@ -188,9 +188,9 @@
    :static true}
  assoc
  (fn ^:static assoc
-   ([map key val] (. clojure.lang.RT (assoc map key val)))
+   ([map key val] (clojure.lang.RT/assoc map key val))
    ([map key val & kvs]
-    (let [ret (assoc map key val)]
+    (let [ret (clojure.lang.RT/assoc map key val)]
       (if kvs
         (if (next kvs)
           (recur ret (first kvs) (second kvs) (nnext kvs))
@@ -237,13 +237,26 @@
                (if (next body)
                  (with-meta arglist (conj (if (meta arglist) (meta arglist) {}) (first body)))
                  arglist)
-               arglist)))]
+               arglist)))
+         resolve-tag (fn [argvec]
+                        (let [m (meta argvec)
+                              ^clojure.lang.Symbol tag (:tag m)]
+                          (if (instance? clojure.lang.Symbol tag)
+                            (if (clojure.lang.Util/equiv (.indexOf (.getName tag) ".") -1)
+                              (if (clojure.lang.Util/equals nil (clojure.lang.Compiler$HostExpr/maybeSpecialTag tag))
+                                (let [c (clojure.lang.Compiler$HostExpr/maybeClass tag false)]
+                                  (if c
+                                    (with-meta argvec (assoc m :tag (clojure.lang.Symbol/intern (.getName c))))
+                                    argvec))
+                                argvec)
+                              argvec)
+                            argvec)))]
      (if (seq? (first fdecl))
        (loop [ret [] fdecls fdecl]
          (if fdecls
-           (recur (conj ret (asig (first fdecls))) (next fdecls))
+           (recur (conj ret (resolve-tag (asig (first fdecls)))) (next fdecls))
            (seq ret)))
-       (list (asig fdecl))))))
+       (list (resolve-tag (asig fdecl)))))))
 
 
 (def 
@@ -317,7 +330,8 @@
           (list 'def (with-meta name m)
                 ;;todo - restore propagation of fn name
                 ;;must figure out how to convey primitive hints to self calls first
-                (cons `fn fdecl) ))))
+								;;(cons `fn fdecl)
+								(with-meta (cons `fn fdecl) {:rettag (:tag m)})))))
 
 (. (var defn) (setMacro))
 
@@ -345,8 +359,10 @@
   ([a b] [a b])
   ([a b c] [a b c])
   ([a b c d] [a b c d])
-  ([a b c d & args]
-     (. clojure.lang.LazilyPersistentVector (create (cons a (cons b (cons c (cons d args))))))))
+	([a b c d e] [a b c d e])
+	([a b c d e f] [a b c d e f])
+  ([a b c d e f & args]
+     (. clojure.lang.LazilyPersistentVector (create (cons a (cons b (cons c (cons d (cons e (cons f args))))))))))
 
 (defn vec
   "Creates a new vector containing the contents of coll. Java arrays
@@ -611,7 +627,7 @@
    :else (cons (first arglist) (spread (next arglist)))))
 
 (defn list*
-  "Creates a new list containing the items prepended to the rest, the
+  "Creates a new seq containing the items prepended to the rest, the
   last of which will be treated as a sequence."
   {:added "1.0"
    :static true}
@@ -935,7 +951,7 @@
 (defn ^:private >0? [n] (clojure.lang.Numbers/gt n 0))
 
 (defn +'
-  "Returns the sum of nums. (+) returns 0. Supports arbitrary precision.
+  "Returns the sum of nums. (+') returns 0. Supports arbitrary precision.
   See also: +"
   {:inline (nary-inline 'addP)
    :inline-arities >1?
@@ -959,7 +975,7 @@
      (reduce1 + (+ x y) more)))
 
 (defn *'
-  "Returns the product of nums. (*) returns 1. Supports arbitrary precision.
+  "Returns the product of nums. (*') returns 1. Supports arbitrary precision.
   See also: *"
   {:inline (nary-inline 'multiplyP)
    :inline-arities >1?
@@ -1409,6 +1425,12 @@
   [coll] (. clojure.lang.RT (pop coll)))
 
 ;;map stuff
+
+(defn map-entry?
+  "Return true if x is a map entry"
+  {:added "1.8"}
+  [x]
+	(instance? java.util.Map$Entry x))
 
 (defn contains?
   "Returns true if key is present in the given collection, otherwise
@@ -1871,7 +1893,7 @@
 
 (defmacro with-bindings
   "Takes a map of Var/value pairs. Installs for the given Vars the associated
-  values as thread-local bindings. The executes body. Pops the installed
+  values as thread-local bindings. Then executes body. Pops the installed
   bindings after body was evaluated. Returns the value of body."
   {:added "1.1"}
   [binding-map & body]
@@ -2986,8 +3008,9 @@
 (defn sort
   "Returns a sorted sequence of the items in coll. If no comparator is
   supplied, uses compare.  comparator must implement
-  java.util.Comparator.  If coll is a Java array, it will be modified.
-  To avoid this, sort a copy of the array."
+  java.util.Comparator.  Guaranteed to be stable: equal elements will
+  not be reordered.  If coll is a Java array, it will be modified.  To
+  avoid this, sort a copy of the array."
   {:added "1.0"
    :static true}
   ([coll]
@@ -3003,8 +3026,9 @@
   "Returns a sorted sequence of the items in coll, where the sort
   order is determined by comparing (keyfn item).  If no comparator is
   supplied, uses compare.  comparator must implement
-  java.util.Comparator.  If coll is a Java array, it will be modified.
-  To avoid this, sort a copy of the array."
+  java.util.Comparator.  Guaranteed to be stable: equal elements will
+  not be reordered.  If coll is a Java array, it will be modified.  To
+  avoid this, sort a copy of the array."
   {:added "1.0"
    :static true}
   ([keyfn coll]
@@ -4294,24 +4318,24 @@
                            (if (seq bes)
                              (let [bb (key (first bes))
                                    bk (val (first bes))
-                                   has-default (contains? defaults bb)]
-                               (recur (pb ret bb (if has-default
-                                                   (list `get gmap bk (defaults bb))
-                                                   (list `get gmap bk)))
+                                   bv (if (contains? defaults bb)
+                                        (list `get gmap bk (defaults bb))
+                                        (list `get gmap bk))]
+                               (recur (cond
+                                        (symbol? bb) (-> ret (conj (if (namespace bb) (symbol (name bb)) bb)) (conj bv))
+                                        (keyword? bb) (-> ret (conj (symbol (name bb)) bv))
+                                        :else (pb ret bb bv))
                                       (next bes)))
                              ret))))]
                  (cond
-                  (symbol? b) (-> bvec (conj (if (namespace b) (symbol (name b)) b)) (conj v))
-                  (keyword? b) (-> bvec (conj (symbol (name b))) (conj v))
-                  (vector? b) (pvec bvec b v)
-                  (map? b) (pmap bvec b v)
-                  :else (throw (new Exception (str "Unsupported binding form: " b))))))
+                   (symbol? b) (-> bvec (conj b) (conj v))
+                   (vector? b) (pvec bvec b v)
+                   (map? b) (pmap bvec b v)
+                   :else (throw (new Exception (str "Unsupported binding form: " b))))))
         process-entry (fn [bvec b] (pb bvec (first b) (second b)))]
     (if (every? symbol? (map first bents))
       bindings
-      (if-let [kwbs (seq (filter #(keyword? (first %)) bents))]
-        (throw (new Exception (str "Unsupported binding key: " (ffirst kwbs))))
-        (reduce1 process-entry [] bents)))))
+      (reduce1 process-entry [] bents))))
 
 (defmacro let
   "binding => binding-form init-expr
@@ -5055,10 +5079,10 @@
   evaluation of expr at each step, returning ret."
   {:added "1.0"}
   [a idx ret init expr]
-  `(let [a# ~a]
+  `(let [a# ~a l# (alength a#)]
      (loop  [~idx 0 ~ret ~init]
-       (if (< ~idx  (alength a#))
-         (recur (unchecked-inc ~idx) ~expr)
+       (if (< ~idx l#)
+         (recur (unchecked-inc-int ~idx) ~expr)
          ~ret))))
 
 (defn float-array
@@ -5585,9 +5609,11 @@
             (list* `gen-class :name (.replace (str name) \- \_) :impl-ns name :main true (next gen-class-clause)))
         references (remove #(= :gen-class (first %)) references)
         ;ns-effect (clojure.core/in-ns name)
-        ]
+        name-metadata (meta name)]
     `(do
        (clojure.core/in-ns '~name)
+       ~@(when name-metadata
+           `((.resetMeta (clojure.lang.Namespace/find '~name) ~name-metadata)))
        (with-loading-context
         ~@(when gen-class-call (list gen-class-call))
         ~@(when (and (not= name 'clojure.core) (not-any? #(= :refer-clojure (first %)) references))
@@ -5676,7 +5702,7 @@
   (let [d (root-resource lib)]
     (subs d 0 (.lastIndexOf d "/"))))
 
-(declare load)
+(def ^:declared ^:redef load)
 
 (defn- load-one
   "Loads a lib given its name. If need-ns, ensures that the associated
@@ -5866,7 +5892,8 @@
   "Loads Clojure code from resources in classpath. A path is interpreted as
   classpath-relative if it begins with a slash or relative to the root
   directory for the current namespace otherwise."
-  {:added "1.0"}
+  {:redef true
+   :added "1.0"}
   [& paths]
   (doseq [^String path paths]
     (let [^String path (if (.startsWith path "/")
@@ -6134,8 +6161,7 @@
                              ~(emit pred expr more))
                   :else `(if-let [p# (~pred ~a ~expr)]
                            (~c p#)
-                           ~(emit pred expr more)))))
-        gres (gensym "res__")]
+                           ~(emit pred expr more)))))]
     `(let [~gpred ~pred
            ~gexpr ~expr]
        ~(emit gpred gexpr clauses))))
@@ -6545,25 +6571,10 @@
   [amap f init]
   (reduce (fn [ret [k v]] (f ret k v)) init amap))
 
- clojure.lang.PersistentHashMap
+ clojure.lang.IKVReduce
  (kv-reduce 
   [amap f init]
-  (.kvreduce amap f init))
-
- clojure.lang.PersistentArrayMap
- (kv-reduce 
-  [amap f init]
-  (.kvreduce amap f init))
-
- clojure.lang.PersistentTreeMap
- (kv-reduce 
-  [amap f init]
-  (.kvreduce amap f init))
-
- clojure.lang.PersistentVector
- (kv-reduce 
-  [vec f init]
-  (.kvreduce vec f init)))
+  (.kvreduce amap f init)))
 
 (defn reduce-kv
   "Reduces an associative collection. f should be a function of 3
@@ -6664,14 +6675,10 @@
   {:added "1.0"}
   ([f & opts]
      (let [opts (normalize-slurp-opts opts)
-           sb (StringBuilder.)]
+           sw (java.io.StringWriter.)]
        (with-open [^java.io.Reader r (apply jio/reader f opts)]
-         (loop [c (.read r)]
-           (if (neg? c)
-             (str sb)
-             (do
-               (.append sb (char c))
-               (recur (.read r)))))))))
+         (jio/copy r sw)
+         (.toString sw)))))
 
 (defn spit
   "Opposite of slurp.  Opens f with writer, writes content, then
@@ -7254,10 +7261,13 @@
   [expr & clauses]
   (assert (even? (count clauses)))
   (let [g (gensym)
-        pstep (fn [[test step]] `(if ~test (-> ~g ~step) ~g))]
+        steps (map (fn [[test step]] `(if ~test (-> ~g ~step) ~g))
+                   (partition 2 clauses))]
     `(let [~g ~expr
-           ~@(interleave (repeat g) (map pstep (partition 2 clauses)))]
-       ~g)))
+           ~@(interleave (repeat g) (butlast steps))]
+       ~(if (empty? steps)
+          g
+          (last steps)))))
 
 (defmacro cond->>
   "Takes an expression and a set of test/form pairs. Threads expr (via ->>)
@@ -7268,10 +7278,13 @@
   [expr & clauses]
   (assert (even? (count clauses)))
   (let [g (gensym)
-        pstep (fn [[test step]] `(if ~test (->> ~g ~step) ~g))]
+        steps (map (fn [[test step]] `(if ~test (->> ~g ~step) ~g))
+                   (partition 2 clauses))]
     `(let [~g ~expr
-           ~@(interleave (repeat g) (map pstep (partition 2 clauses)))]
-       ~g)))
+           ~@(interleave (repeat g) (butlast steps))]
+       ~(if (empty? steps)
+          g
+          (last steps)))))
 
 (defmacro as->
   "Binds name to expr, evaluates the first form in the lexical context
@@ -7280,8 +7293,10 @@
   {:added "1.5"}
   [expr name & forms]
   `(let [~name ~expr
-         ~@(interleave (repeat name) forms)]
-     ~name))
+         ~@(interleave (repeat name) (butlast forms))]
+     ~(if (empty? forms)
+        name
+        (last forms))))
 
 (defmacro some->
   "When expr is not nil, threads it into the first form (via ->),
@@ -7289,10 +7304,13 @@
   {:added "1.5"}
   [expr & forms]
   (let [g (gensym)
-        pstep (fn [step] `(if (nil? ~g) nil (-> ~g ~step)))]
+        steps (map (fn [step] `(if (nil? ~g) nil (-> ~g ~step)))
+                   forms)]
     `(let [~g ~expr
-           ~@(interleave (repeat g) (map pstep forms))]
-       ~g)))
+           ~@(interleave (repeat g) (butlast steps))]
+       ~(if (empty? steps)
+          g
+          (last steps)))))
 
 (defmacro some->>
   "When expr is not nil, threads it into the first form (via ->>),
@@ -7300,10 +7318,13 @@
   {:added "1.5"}
   [expr & forms]
   (let [g (gensym)
-        pstep (fn [step] `(if (nil? ~g) nil (->> ~g ~step)))]
+        steps (map (fn [step] `(if (nil? ~g) nil (->> ~g ~step)))
+                   forms)]
     `(let [~g ~expr
-           ~@(interleave (repeat g) (map pstep forms))]
-       ~g)))
+           ~@(interleave (repeat g) (butlast steps))]
+       ~(if (empty? steps)
+          g
+          (last steps)))))
 
 (defn ^:private preserving-reduced
   [rf]
@@ -7384,7 +7405,8 @@
   effects, on successive items in the collection. Returns nil"
   {:added "1.7"}
   [proc coll]
-  (reduce #(proc %2) nil coll))
+  (reduce #(proc %2) nil coll)
+  nil)
 
 
 (defn tagged-literal?

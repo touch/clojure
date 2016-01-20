@@ -14,6 +14,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 /**
  * Simple implementation of persistent map on an array
@@ -26,7 +27,7 @@ import java.util.Map;
  * null keys and values are ok, but you won't be able to distinguish a null value via valAt - use contains/entryAt
  */
 
-public class PersistentArrayMap extends APersistentMap implements IObj, IEditableCollection, IMapIterable {
+public class PersistentArrayMap extends APersistentMap implements IObj, IEditableCollection, IMapIterable, IKVReduce{
 
 final Object[] array;
 static final int HASHTABLE_THRESHOLD = 16;
@@ -38,8 +39,8 @@ static public IPersistentMap create(Map other){
 	ITransientMap ret = EMPTY.asTransient();
 	for(Object o : other.entrySet())
 		{
-		Map.Entry e = (Entry) o;
-		ret = ret.assoc(e.getKey(), e.getValue());
+            Map.Entry e = (Entry) o;
+            ret = ret.assoc(e.getKey(), e.getValue());
 		}
 	return ret.persistent();
 }
@@ -74,6 +75,8 @@ static public PersistentArrayMap createWithCheck(Object[] init){
 }
 
 static public PersistentArrayMap createAsIfByAssoc(Object[] init){
+	if ((init.length & 1) == 1)
+                throw new IllegalArgumentException(String.format("No value supplied for key: %s", init[init.length-1]));
 	// If this looks like it is doing busy-work, it is because it
 	// is achieving these goals: O(n^2) run time like
 	// createWithCheck(), never modify init arg, and only
@@ -161,7 +164,7 @@ public boolean containsKey(Object key){
 public IMapEntry entryAt(Object key){
 	int i = indexOf(key);
 	if(i >= 0)
-		return new MapEntry(array[i],array[i+1]);
+		return (IMapEntry) MapEntry.create(array[i],array[i+1]);
 	return null;
 }
 
@@ -216,15 +219,8 @@ public IPersistentMap without(Object key){
 		if(newlen == 0)
 			return empty();
 		Object[] newArray = new Object[newlen];
-		for(int s = 0, d = 0; s < array.length; s += 2)
-			{
-			if(!equalKey(array[s], key)) //skip removal key
-				{
-				newArray[d] = array[s];
-				newArray[d + 1] = array[s + 1];
-				d += 2;
-				}
-			}
+		System.arraycopy(array, 0, newArray, 0, i);
+		System.arraycopy(array, i+2, newArray, i, newlen - i);
 		return create(newArray);
 		}
 	//don't have key, no op
@@ -318,7 +314,7 @@ static class Seq extends ASeq implements Counted{
 	}
 
 	public Object first(){
-		return new MapEntry(array[i],array[i+1]);
+		return MapEntry.create(array[i],array[i+1]);
 	}
 
 	public ISeq next(){
@@ -358,8 +354,12 @@ static class Iter implements Iterator{
 	}
 
 	public Object next(){
-		i += 2;
-		return f.invoke(array[i],array[i+1]);
+		try {
+			i += 2;
+			return f.invoke(array[i], array[i+1]);
+		} catch(IndexOutOfBoundsException e) {
+			throw new NoSuchElementException();
+		}
 	}
 
 	public void remove(){
