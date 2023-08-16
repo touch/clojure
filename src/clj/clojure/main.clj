@@ -12,6 +12,7 @@
        :author "Stephen C. Gilardi and Rich Hickey"}
   clojure.main
   (:refer-clojure :exclude [with-bindings])
+  (:require [clojure.spec.alpha])
   (:import (clojure.lang Compiler Compiler$CompilerException
                          LineNumberingPushbackReader RT))
   ;;(:use [clojure.repl :only (demunge root-cause stack-element-str)])
@@ -74,12 +75,14 @@
              *print-meta* *print-meta*
              *print-length* *print-length*
              *print-level* *print-level*
+             *print-namespace-maps* true
              *data-readers* *data-readers*
              *default-data-reader-fn* *default-data-reader-fn*
              *compile-path* (System/getProperty "clojure.compile.path" "classes")
              *command-line-args* *command-line-args*
              *unchecked-math* *unchecked-math*
              *assert* *assert*
+             clojure.spec.alpha/*explain-out* clojure.spec.alpha/*explain-out*
              *1 nil
              *2 nil
              *3 nil

@@ -8,7 +8,9 @@
 (deftest test-doc
   (testing "with namespaces"
     (is (= "clojure.pprint"
-           (second (str/split-lines (with-out-str (doc clojure.pprint))))))))
+           (second (str/split-lines (with-out-str (doc clojure.pprint)))))))
+  (testing "with special cases"
+    (is (= (with-out-str (doc catch)) (with-out-str (doc try))))))
 
 (deftest test-source
   (is (= "(defn foo [])" (source-fn 'clojure.test-clojure.repl.example/foo)))
@@ -24,6 +26,8 @@
 (deftest test-dir
   (is (thrown? Exception (dir-fn 'non-existent-ns)))
   (is (= '[bar foo] (dir-fn 'clojure.test-clojure.repl.example)))
+  (binding [*ns* (the-ns 'clojure.test-clojure.repl)]
+    (is (= (dir-fn 'clojure.string) (dir-fn 'str))))
   (is (= (platform-newlines "bar\nfoo\n") (with-out-str (dir clojure.test-clojure.repl.example)))))
 
 (deftest test-apropos

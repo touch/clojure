@@ -390,7 +390,7 @@
 
 (defn copy
   "Copies input to output.  Returns nil or throws IOException.
-  Input may be an InputStream, Reader, File, byte[], or String.
+  Input may be an InputStream, Reader, File, byte[], char[], or String.
   Output may be an OutputStream, Writer, or File.
 
   Options are key/value pairs and may be one of
@@ -428,7 +428,7 @@
      (reduce file (file parent child) more)))
 
 (defn delete-file
-  "Delete file f. Raise an exception if it fails unless silently is true."
+  "Delete file f. If silently is nil or false, raise an exception on failure, else return the value of silently."
   {:added "1.2"}
   [f & [silently]]
   (or (.delete (file f))

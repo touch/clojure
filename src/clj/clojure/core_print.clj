@@ -38,6 +38,13 @@
 
 (def ^:dynamic *verbose-defrecords* false)
 
+(def ^:dynamic
+ ^{:doc "*print-namespace-maps* controls whether the printer will print
+  namespace map literal syntax. It defaults to false, but the REPL binds
+  to true."
+   :added "1.9"}
+ *print-namespace-maps* false)
+
 (defn- print-sequential [^String begin, print-one, ^String sep, ^String end, sequence, ^Writer w]
   (binding [*print-level* (and (not *print-dup*) *print-level* (dec *print-level*))]
     (if (and *print-level* (neg? *print-level*))
@@ -120,6 +127,20 @@
 
 (defmethod print-method Number [o, ^Writer w]
   (.write w (str o)))
+
+(defmethod print-method Double [o, ^Writer w]
+  (cond
+    (= Double/POSITIVE_INFINITY o) (.write w "##Inf")
+    (= Double/NEGATIVE_INFINITY o) (.write w "##-Inf")
+    (.isNaN ^Double o) (.write w "##NaN")
+    :else (.write w (str o))))
+
+(defmethod print-method Float [o, ^Writer w]
+  (cond
+    (= Float/POSITIVE_INFINITY o) (.write w "##Inf")
+    (= Float/NEGATIVE_INFINITY o) (.write w "##-Inf")
+    (.isNaN ^Float o) (.write w "##NaN")
+    :else (.write w (str o))))
 
 (defmethod print-dup Number [o, ^Writer w]
   (print-ctor o
@@ -205,18 +226,46 @@
   (print-meta v w)
   (print-sequential "[" pr-on " " "]" v w))
 
+(defn- print-prefix-map [prefix m print-one w]
+  (print-sequential
+    (str prefix "{")
+    (fn [e ^Writer w]
+      (do (print-one (key e) w) (.append w \space) (print-one (val e) w)))
+    ", "
+    "}"
+    (seq m) w))
+
 (defn- print-map [m print-one w]
-  (print-sequential 
-   "{"
-   (fn [e  ^Writer w]
-     (do (print-one (key e) w) (.append w \space) (print-one (val e) w)))
-   ", "
-   "}"
-   (seq m) w))
+  (print-prefix-map nil m print-one w))
+
+(defn- strip-ns
+  [named]
+  (if (symbol? named)
+    (symbol nil (name named))
+    (keyword nil (name named))))
+
+(defn- lift-ns
+  "Returns [lifted-ns lifted-map] or nil if m can't be lifted."
+  [m]
+  (when *print-namespace-maps*
+    (loop [ns nil
+           [[k v :as entry] & entries] (seq m)
+           lm {}]
+      (if entry
+        (when (or (keyword? k) (symbol? k))
+          (if ns
+            (when (= ns (namespace k))
+              (recur ns entries (assoc lm (strip-ns k) v)))
+            (when-let [new-ns (namespace k)]
+              (recur new-ns entries (assoc lm (strip-ns k) v)))))
+        [ns (apply conj (empty m) lm)]))))
 
 (defmethod print-method clojure.lang.IPersistentMap [m, ^Writer w]
   (print-meta m w)
-  (print-map m pr-on w))
+  (let [[ns lift-map] (lift-ns m)]
+    (if ns
+      (print-prefix-map (str "#:" ns) lift-map pr-on w)
+      (print-map m pr-on w))))
 
 (defmethod print-dup java.util.Map [m, ^Writer w]
   (print-ctor m #(print-map (seq %1) print-dup %2) w))
@@ -413,18 +462,24 @@
 (defmethod print-method StackTraceElement [^StackTraceElement o ^Writer w]
   (print-method [(symbol (.getClassName o)) (symbol (.getMethodName o)) (.getFileName o) (.getLineNumber o)] w))
 
+(defn StackTraceElement->vec
+  "Constructs a data representation for a StackTraceElement"
+  {:added "1.9"}
+  [^StackTraceElement o]
+  [(symbol (.getClassName o)) (symbol (.getMethodName o)) (.getFileName o) (.getLineNumber o)])
+
 (defn Throwable->map
   "Constructs a data representation for a Throwable."
   {:added "1.7"}
   [^Throwable o]
   (let [base (fn [^Throwable t]
-               (let [m {:type (class t)
-                        :message (.getLocalizedMessage t)
-                        :at (get (.getStackTrace t) 0)}
-                     data (ex-data t)]
-                 (if data
-                   (assoc m :data data)
-                   m)))
+               (merge {:type (symbol (.getName (class t)))
+                       :message (.getLocalizedMessage t)}
+                 (when-let [ed (ex-data t)]
+                   {:data ed})
+                 (let [st (.getStackTrace t)]
+                   (when (pos? (alength st))
+                     {:at (StackTraceElement->vec (aget st 0))}))))
         via (loop [via [], ^Throwable t o]
               (if t
                 (recur (conj via t) (.getCause t))
@@ -432,7 +487,8 @@
         ^Throwable root (peek via)
         m {:cause (.getLocalizedMessage root)
            :via (vec (map base via))
-           :trace (vec (.getStackTrace ^Throwable (or root o)))}
+           :trace (vec (map StackTraceElement->vec
+                            (.getStackTrace ^Throwable (or root o))))}
         data (ex-data root)]
     (if data
       (assoc m :data data)
@@ -448,9 +504,10 @@
              (when-let [data (:data %)]
                (.write w "\n   :data ")
                (print-method data w))
-					   (.write w "\n   :at ")
-					   (print-method (:at %) w)
-					   (.write w "}"))]
+             (when-let [at (:at %)]
+               (.write w "\n   :at ")
+               (print-method (:at %) w))
+             (.write w "}"))]
     (print-method cause w)
     (when data
       (.write w "\n :data ")

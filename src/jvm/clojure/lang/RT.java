@@ -36,7 +36,7 @@ static final public Boolean F = Boolean.FALSE;//Keyword.intern(Symbol.intern(nul
 static final public String LOADER_SUFFIX = "__init";
 
 //simple-symbol->class
-final static IPersistentMap DEFAULT_IMPORTS = map(
+final static public IPersistentMap DEFAULT_IMPORTS = map(
 //												  Symbol.intern("RT"), "clojure.lang.RT",
 //                                                  Symbol.intern("Num"), "clojure.lang.Num",
 //                                                  Symbol.intern("Symbol"), "clojure.lang.Symbol",
@@ -227,6 +227,7 @@ final static Var PRINT_READABLY = Var.intern(CLOJURE_NS, Symbol.intern("*print-r
 final static Var PRINT_DUP = Var.intern(CLOJURE_NS, Symbol.intern("*print-dup*"), F).setDynamic();
 final static Var WARN_ON_REFLECTION = Var.intern(CLOJURE_NS, Symbol.intern("*warn-on-reflection*"), F).setDynamic();
 final static Var ALLOW_UNRESOLVED_VARS = Var.intern(CLOJURE_NS, Symbol.intern("*allow-unresolved-vars*"), F).setDynamic();
+final static Var READER_RESOLVER = Var.intern(CLOJURE_NS, Symbol.intern("*reader-resolver*"), null).setDynamic();
 
 final static Var IN_NS_VAR = Var.intern(CLOJURE_NS, Symbol.intern("in-ns"), F);
 final static Var NS_VAR = Var.intern(CLOJURE_NS, Symbol.intern("ns"), F);
@@ -298,6 +299,10 @@ static public void addURL(Object url) throws MalformedURLException{
 		throw new IllegalAccessError("Context classloader is not a DynamicClassLoader");
 }
 
+public static boolean checkSpecAsserts = Boolean.getBoolean("clojure.spec.check-asserts");
+public static boolean instrumentMacros = ! Boolean.getBoolean("clojure.spec.skip-macros");
+static volatile boolean CHECK_SPECS = false;
+
 static{
 	Keyword arglistskw = Keyword.intern(null, "arglists");
 	Symbol namesym = Symbol.intern("name");
@@ -333,6 +338,8 @@ static{
 	catch(Exception e) {
 		throw Util.sneakyThrow(e);
 	}
+
+	CHECK_SPECS = RT.instrumentMacros;
 }
 
 static public Keyword keyword(String ns, String name){
@@ -523,6 +530,7 @@ static public ISeq seq(Object coll){
 		return seqFrom(coll);
 }
 
+// N.B. canSeq must be kept in sync with this!
 static ISeq seqFrom(Object coll){
 	if(coll instanceof Seqable)
 		return ((Seqable) coll).seq();
@@ -541,6 +549,16 @@ static ISeq seqFrom(Object coll){
 		Class sc = c.getSuperclass();
 		throw new IllegalArgumentException("Don't know how to create ISeq from: " + c.getName());
 	}
+}
+
+static public boolean canSeq(Object coll){
+    return coll instanceof ISeq
+            || coll instanceof Seqable
+            || coll == null
+            || coll instanceof Iterable
+            || coll.getClass().isArray()
+            || coll instanceof CharSequence
+            || coll instanceof Map;
 }
 
 static public Iterator iter(Object coll){
@@ -753,6 +771,10 @@ static Object getFrom(Object coll, Object key){
 			return nth(coll, n);
 		return null;
 	}
+	else if(coll instanceof ITransientSet) {
+		ITransientSet set = (ITransientSet) coll;
+		return set.get(key);
+	}
 
 	return null;
 }
@@ -781,6 +803,12 @@ static Object getFrom(Object coll, Object key, Object notFound){
 	else if(key instanceof Number && (coll instanceof String || coll.getClass().isArray())) {
 		int n = ((Number) key).intValue();
 		return n >= 0 && n < count(coll) ? nth(coll, n) : notFound;
+	}
+	else if(coll instanceof ITransientSet) {
+		ITransientSet set = (ITransientSet) coll;
+		if(set.contains(key))
+			return set.get(key);
+		return notFound;
 	}
 	return notFound;
 
@@ -811,6 +839,10 @@ static public Object contains(Object coll, Object key){
 		int n = ((Number) key).intValue();
 		return n >= 0 && n < count(coll);
 	}
+	else if(coll instanceof ITransientSet)
+		return ((ITransientSet)coll).contains(key) ? T : F;
+	else if(coll instanceof ITransientAssociative2)
+		return (((ITransientAssociative2)coll).containsKey(key)) ? T : F;
 	throw new IllegalArgumentException("contains? not supported on type: " + coll.getClass().getName());
 }
 
@@ -819,12 +851,16 @@ static public Object find(Object coll, Object key){
 		return null;
 	else if(coll instanceof Associative)
 		return ((Associative) coll).entryAt(key);
-	else {
+	else if(coll instanceof Map) {
 		Map m = (Map) coll;
 		if(m.containsKey(key))
 			return MapEntry.create(key, m.get(key));
 		return null;
 	}
+	else if(coll instanceof ITransientAssociative2) {
+		return ((ITransientAssociative2) coll).entryAt(key);
+	}
+	throw new IllegalArgumentException("find not supported on type: " + coll.getClass().getName());
 }
 
 //takes a seq of key,val,key,val

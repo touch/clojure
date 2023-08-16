@@ -328,6 +328,19 @@
                  (apply (apply some-fn (repeat i (comp not boolean))) (range i))))
                  true))))
 
+
+(deftest test-max-min-key
+  (are [k coll min-item max-item] (and (= min-item (apply min-key k coll))
+                                       (= max-item (apply max-key k coll)))
+       count ["longest" "a" "xy" "foo" "bar"] "a" "longest"
+       - [5 10 15 20 25] 25 5
+       #(if (neg? %) (- %) %) [-2 -1 0 1 2 3 4] 0 4
+       {nil 1 false -1 true 0} [true true false nil] false nil)
+  (are [f k coll expected] (= expected (apply f k coll))
+    min-key :x [{:x 1000} {:x 1001} {:x 1002} {:x 1000 :second true}] {:x 1000 :second true}
+    max-key :x [{:x 1000} {:x 999} {:x 998} {:x 1000 :second true}] {:x 1000 :second true}))
+
+
 ; Printing
 ; pr prn print println newline
 ; pr-str prn-str print-str println-str [with-out-str (vars.clj)]

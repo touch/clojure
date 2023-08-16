@@ -42,15 +42,10 @@
   (refer 'clojure.core :rename '{with-open renamed-with-open})
   
   ; would have used `are` here, but :line meta on &form doesn't survive successive macroexpansions
-  (doseq [[msg-regex-str form] [["if-let .* in %s:\\d+" '(if-let [a 5
-                                                                 b 6]
-                                                          true nil)]
-                                ["let .* in %s:\\d+" '(let [a])] 
-                                ["let .* in %s:\\d+" '(let (a))]
-                                ["renamed-with-open .* in %s:\\d+" '(renamed-with-open [a])]]]
+  (doseq [[msg-regex-str form] [["renamed-with-open" "(renamed-with-open [a])"]]]
     (is (thrown-with-msg? IllegalArgumentException
                           (re-pattern (format msg-regex-str *ns*))
-                          (macroexpand form)))))
+                          (macroexpand (read-string form))))))
 
 (deftest extract-ex-data
   (try
@@ -79,7 +74,19 @@
            data-top-level :data}
           (Throwable->map (ex-info "ex-info"
                                    {:some "data"}))]
-      (is (= data data-top-level {:some "data"})))))
+      (is (= data data-top-level {:some "data"}))))
+  (testing "nil stack handled"
+    (let [t (Throwable. "abc")]
+      ;; simulate what can happen when Java omits stack traces
+      (.setStackTrace t (into-array StackTraceElement []))
+      (let [{:keys [cause via trace]} (Throwable->map t)]
+        (is (= cause "abc"))
+        (is (= trace []))
+
+        ;; fail if printing throws an exception
+        (try
+          (with-out-str (pr t))
+          (catch Throwable t (is nil)))))))
 
 (deftest ex-info-disallows-nil-data
   (is (thrown? IllegalArgumentException (ex-info "message" nil)))

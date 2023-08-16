@@ -92,7 +92,7 @@
            debug="true" source="1.6" target="1.6" includeantruntime="no"/>
     <echo>Direct linking = ${directlinking}</echo>
     <java classname="clojure.lang.Compile"
-          classpath="${test-classes}:${test}:${build}:${cljsrc}"
+          classpath="${test-classes}:${test}:${build}:${cljsrc}:${maven.test.classpath}"
           failonerror="true"
 	  fork="true">
       <sysproperty key="clojure.compile.path" value="${test-classes}"/>
@@ -194,4 +194,11 @@
     </delete>
   </target>
 
+  <target name="local">
+    <exec executable="mvn">
+      <arg value="-Plocal"/>
+      <arg value="-Dmaven.test.skip=true"/>
+      <arg value="package"/>
+    </exec>
+  </target>
 </project>

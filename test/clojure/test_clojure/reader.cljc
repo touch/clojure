@@ -22,8 +22,10 @@
                                 read-instant-calendar
                                 read-instant-timestamp]])
   (:require clojure.walk
+            [clojure.edn :as edn]
             [clojure.test.generative :refer (defspec)]
-            [clojure.test-clojure.generators :as cgen])
+            [clojure.test-clojure.generators :as cgen]
+            [clojure.edn :as edn])
   (:import [clojure.lang BigInt Ratio]
            java.io.File
            java.util.TimeZone))
@@ -210,6 +212,10 @@
 
   (is (instance? Double -1.0))
   (is (instance? Double -1.))
+
+  (is (= Double/POSITIVE_INFINITY ##Inf))
+  (is (= Double/NEGATIVE_INFINITY ##-Inf))
+  (is (and (instance? Double ##NaN) (.isNaN ##NaN)))
 
   ; Read BigDecimal
   (is (instance? BigDecimal 9223372036854775808M))
@@ -713,3 +719,39 @@
   (is (= 23 (read-string {:eof 23} "")))
   (is (= 23 (read {:eof 23} (clojure.lang.LineNumberingPushbackReader.
                              (java.io.StringReader. ""))))))
+
+(require '[clojure.string :as s])
+(deftest namespaced-maps
+  (is (= #:a{1 nil, :b nil, :b/c nil, :_/d nil}
+         #:a {1 nil, :b nil, :b/c nil, :_/d nil}
+         {1 nil, :a/b nil, :b/c nil, :d nil}))
+  (is (= #::{1 nil, :a nil, :a/b nil, :_/d nil}
+         #::  {1 nil, :a nil, :a/b nil, :_/d nil}
+         {1 nil, :clojure.test-clojure.reader/a nil, :a/b nil, :d nil} ))
+  (is (= #::s{1 nil, :a nil, :a/b nil, :_/d nil}
+         #::s  {1 nil, :a nil, :a/b nil, :_/d nil}
+         {1 nil, :clojure.string/a nil, :a/b nil, :d nil}))
+  (is (= (read-string "#:a{b 1 b/c 2}") {'a/b 1, 'b/c 2}))
+  (is (= (binding [*ns* (the-ns 'clojure.test-clojure.reader)] (read-string "#::{b 1, b/c 2, _/d 3}")) {'clojure.test-clojure.reader/b 1, 'b/c 2, 'd 3}))
+  (is (= (binding [*ns* (the-ns 'clojure.test-clojure.reader)] (read-string "#::s{b 1, b/c 2, _/d 3}")) {'clojure.string/b 1, 'b/c 2, 'd 3})))
+
+(deftest namespaced-map-errors
+  (are [err msg form] (thrown-with-msg? err msg (read-string form))
+                      Exception #"Invalid token" "#:::"
+                      Exception #"Namespaced map literal must contain an even number of forms" "#:s{1}"
+                      Exception #"Namespaced map must specify a valid namespace" "#:s/t{1 2}"
+                      Exception #"Unknown auto-resolved namespace alias" "#::BOGUS{1 2}"
+                      Exception #"Namespaced map must specify a namespace" "#: s{:a 1}"
+                      Exception #"Duplicate key: :user/a" "#::{:a 1 :a 2}"
+                      Exception #"Duplicate key: user/a" "#::{a 1 a 2}"))
+
+(deftest namespaced-map-edn
+  (is (= {1 1, :a/b 2, :b/c 3, :d 4}
+         (edn/read-string "#:a{1 1, :b 2, :b/c 3, :_/d 4}")
+         (edn/read-string "#:a {1 1, :b 2, :b/c 3, :_/d 4}"))))
+
+(deftest invalid-symbol-value
+  (is (thrown-with-msg? Exception #"Invalid token" (read-string "##5")))
+  (is (thrown-with-msg? Exception #"Invalid token" (edn/read-string "##5")))
+  (is (thrown-with-msg? Exception #"Unknown symbolic value" (read-string "##Foo")))
+  (is (thrown-with-msg? Exception #"Unknown symbolic value" (edn/read-string "##Foo"))))

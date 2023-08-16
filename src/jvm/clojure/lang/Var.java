@@ -12,10 +12,12 @@
 
 package clojure.lang;
 
+import java.io.ObjectStreamException;
+import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
-public final class Var extends ARef implements IFn, IRef, Settable{
+public final class Var extends ARef implements IFn, IRef, Settable, Serializable{
 
 static class TBox{
 
@@ -698,7 +700,7 @@ public Object invoke(Object arg1, Object arg2, Object arg3, Object arg4, Object 
 }
 
 public Object applyTo(ISeq arglist) {
-	return AFn.applyToHelper(this, arglist);
+    return fn().applyTo(arglist);
 }
 
 static IFn assoc = new AFn(){
@@ -713,4 +715,28 @@ static IFn dissoc = new AFn() {
             return RT.dissoc(c, k);
     }
 };
+
+
+/***
+ Note - serialization only supports reconnecting the Var identity on the deserializing end
+ Neither the value in the var nor any of its properties are serialized
+***/
+
+private static class Serialized implements Serializable{
+    public Serialized(Symbol nsName, Symbol sym){
+        this.nsName = nsName;
+        this.sym = sym;
+    }
+
+    private Symbol nsName;
+    private Symbol sym;
+
+    private Object readResolve() throws ObjectStreamException{
+        return intern(nsName, sym);
+    }
+}
+
+private Object writeReplace() throws ObjectStreamException{
+    return new Serialized(ns.getName(), sym);
+}
 }

@@ -119,27 +119,9 @@
        #'var-with-meta "#'clojure.test-clojure.printer/var-with-meta"
        #'var-with-type "#'clojure.test-clojure.printer/var-with-type"))
 
-(defn ^:private ednize-stack-trace-element
-  [^StackTraceElement ste]
-  [(symbol (.getClassName ste))
-   (symbol (.getMethodName ste))
-   (.getFileName ste)
-   (.getLineNumber ste)])
-
-(defn ^:private ednize-throwable-data
-  [throwable-data]
-  (-> throwable-data
-      (update :via (fn [vias]
-                     (map (fn [via]
-                            (-> via
-                                (update :type #(symbol (.getName %)))
-                                (update :at ednize-stack-trace-element)))
-                          vias)))
-      (update :trace #(map ednize-stack-trace-element %))))
-
 (deftest print-throwable
   (binding [*data-readers* {'error identity}]
-    (are [e] (= (-> e Throwable->map ednize-throwable-data)
+    (are [e] (= (-> e Throwable->map)
                 (-> e pr-str read-string))
          (Exception. "heyo")
          (Throwable. "I can a throwable"
@@ -151,3 +133,19 @@
                               (Error. "less outer"
                                       (ex-info "the root"
                                                {:with "even" :more 'data})))))))
+
+(deftest print-ns-maps
+  (is (= "#:user{:a 1}" (binding [*print-namespace-maps* true] (pr-str {:user/a 1}))))
+  (is (= "{:user/a 1}" (binding [*print-namespace-maps* false] (pr-str {:user/a 1}))))
+  (let [date-map (bean (java.util.Date. 0))]
+    (is (= (binding [*print-namespace-maps* true] (pr-str date-map))
+           (binding [*print-namespace-maps* false] (pr-str date-map))))))
+
+(deftest print-symbol-values
+  (are [s v] (= s (pr-str v))
+             "##Inf" Double/POSITIVE_INFINITY
+             "##-Inf" Double/NEGATIVE_INFINITY
+             "##NaN" Double/NaN
+             "##Inf" Float/POSITIVE_INFINITY
+             "##-Inf" Float/NEGATIVE_INFINITY
+             "##NaN" Float/NaN))
